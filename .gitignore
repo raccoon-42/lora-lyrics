@@ -4,3 +4,14 @@ __pycache__/
 *.pyc
 .env
 .envrc
+
+# Models (too large for git)
+src/models/
+
+# Training outputs
+src/classifier_output/
+
+# Data
+src/data/
+
+GEMINI.md

@@ -1,0 +1,114 @@
+\documentclass[runningheads]{llncs}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+
+\begin{document}
+
+\title{Artist-Conditional Lyric Generation with QLoRA Adapter Blending}
+
+\author{Ali \"Ozkaya}
+\institute{Department of Computer Engineering, Izmir Institute of Technology}
+
+\maketitle
+
+\begin{abstract}
+% ~150 words
+% Problem, method, key preliminary findings
+\end{abstract}
+
+\keywords{lyric generation \and QLoRA \and adapter blending \and parameter-efficient fine-tuning}
+
+% ============================================================
+\section{Introduction}
+\label{sec:intro}
+
+% Problem statement
+% Why artist-conditional generation is interesting
+% Your contribution: per-artist QLoRA adapters + inference-time blending
+% Brief outline of the paper
+
+% ============================================================
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Parameter-Efficient Fine-Tuning}
+% LoRA, QLoRA, DoRA -- cite original papers
+
+\subsection{Text and Lyric Generation}
+% LLM-based generation, creative text, prior lyric generation work
+
+\subsection{Adapter Composition}
+% Adapter merging/blending techniques, multi-task adapters
+
+% ============================================================
+\section{Methodology}
+\label{sec:method}
+
+\subsection{Overview}
+% Pipeline diagram description: data -> preprocess -> adapter training -> blending -> evaluation
+
+\subsection{Preprocessing}
+% Section header normalization, metadata stripping, cleaning steps
+
+\subsection{Artist-Attribution Classifier}
+% DistilBERT, training setup, purpose (evaluation instrument)
+
+\subsection{QLoRA Adapter Training}
+% Base model, quantization, LoRA config, training details
+
+\subsection{Adapter Blending}
+% Linear combination at inference time, blending ratios
+
+\subsection{Baselines}
+% B1: zero-shot, B2: few-shot, B3: DoRA
+
+% ============================================================
+\section{Dataset and Artist Selection}
+\label{sec:dataset}
+
+\subsection{Dataset Overview}
+% genius-lyrics-cleaned, size, columns, source
+
+\subsection{Artist Selection}
+% Criteria, final 5 artists, justification, song counts
+
+\subsection{Data Analysis}
+% Distribution stats, lyric lengths, vocabulary analysis
+% Tables/figures here
+
+% ============================================================
+\section{Preliminary Experiments}
+\label{sec:experiments}
+
+\subsection{Preprocessing Results}
+% What was cleaned, how many songs retained, examples
+
+\subsection{Classifier Training}
+% Hyperparameters, training details
+
+\subsection{Classifier Results}
+% Accuracy on held-out real lyrics, confusion matrix
+% Tables/figures here
+
+% ============================================================
+\section{Planned Experiments}
+\label{sec:planned}
+
+% QLoRA training plan
+% Blending experiments
+% Full evaluation pipeline
+% Timeline
+
+% ============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+% Summary of progress so far
+% Expected contributions of completed work
+
+\bibliographystyle{splncs04}
+\bibliography{references}
+
+\end{document}
