@@ -15,3 +15,6 @@ src/classifier_output/
 src/data/
 
 GEMINI.md
+
+# Adapters
+src/adapters/*
