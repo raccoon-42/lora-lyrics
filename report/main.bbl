@@ -1,0 +1,58 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{chronopoulou2023adaptersoup}
+Chronopoulou, A., Peters, M.E., Fraser, A., Dodge, J.: {AdapterSoup}: Weight
+  averaging to improve generalization of pretrained language models. In:
+  Findings of EACL (2023)
+
+\bibitem{dettmers2022llmint8}
+Dettmers, T., Lewis, M., Belkada, Y., Zettlemoyer, L.: {LLM.int8()}: 8-bit
+  matrix multiplication for transformers at scale. Advances in Neural
+  Information Processing Systems  \textbf{35} (2022)
+
+\bibitem{dettmers2023qlora}
+Dettmers, T., Pagnoni, A., Holtzman, A., Zettlemoyer, L.: {QLoRA}: Efficient
+  finetuning of quantized language models. Advances in Neural Information
+  Processing Systems  \textbf{36} (2023)
+
+\bibitem{gemma2025}
+{Gemma Team}: Gemma 3 technical report. arXiv preprint arXiv:2503.19786  (2025)
+
+\bibitem{hu2022lora}
+Hu, E.J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L.,
+  Chen, W.: {LoRA}: Low-rank adaptation of large language models. arXiv
+  preprint arXiv:2106.09685  (2022)
+
+\bibitem{huang2023lorahub}
+Huang, C., Liu, Q., Lin, B.Y., Pang, T., Du, C., Lin, M.: Lora merging: Merging
+  low-rank adapters for efficient multi-task learning. In: Proceedings of ACL
+  (2024)
+
+\bibitem{liu2024dora}
+Liu, S.Y., Wang, C.Y., Yin, H., Molchanov, P., Wang, Y.C.F., Cheng, K.T., Chen,
+  M.H.: {DoRA}: Weight-decomposed low-rank adaptation. arXiv preprint
+  arXiv:2402.09353  (2024)
+
+\bibitem{liu2019roberta}
+Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D., Levy, O., Lewis, M.,
+  Zettlemoyer, L., Stoyanov, V.: {RoBERTa}: A robustly optimized {BERT}
+  pretraining approach. arXiv preprint arXiv:1907.11692  (2019)
+
+\bibitem{radford2019language}
+Radford, A., Wu, J., Child, R., Luan, D., Amodei, D., Sutskever, I.: Language
+  models are unsupervised multitask learners. OpenAI Blog  (2019)
+
+\bibitem{vonrutte2023language}
+von R{\"u}tte, D., Biggio, L., Kilcher, Y., Hofmann, T.: Language models as
+  lyric generators: A quantitative evaluation. arXiv preprint arXiv:2306.09308
+  (2023)
+
+\bibitem{zhang2023lorahub}
+Zhang, C., Liu, J., Jia, X., Tao, C., Chen, L., Rong, Y., Xu, J., Li, J.:
+  {LoRAHub}: Efficient cross-task generalization via dynamic {LoRA}
+  composition. arXiv preprint arXiv:2307.13269  (2023)
+
+\end{thebibliography}

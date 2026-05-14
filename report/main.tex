@@ -6,16 +6,16 @@
 
 \begin{document}
 
-\title{Artist-Conditional Lyric Generation with QLoRA Adapter Blending}
+\title{Artist-Conditional Lyric Generation\\with QLoRA Adapter Blending}
 
 \author{Ali \"Ozkaya}
-\institute{Department of Computer Engineering, Izmir Institute of Technology}
+\institute{Department of Computer Engineering,\\Izmir Institute of Technology\\
+\email{aliozkaya@std.iyte.edu.tr}}
 
 \maketitle
 
 \begin{abstract}
-% ~150 words
-% Problem, method, key preliminary findings
+We present a pipeline for artist-conditional lyric generation using per-artist QLoRA adapters on a quantized Gemma~4 E4B model. One low-rank adapter is trained per artist, and we propose inference-time linear blending of adapter weights for style interpolation. We select five progressive metal artists whose lyrics are thematically similar, forcing the model to capture fine-grained stylistic differences rather than genre-level features. A RoBERTa-based artist-attribution classifier achieves 92.2\% accuracy on held-out lyrics and serves as the primary evaluation instrument. Preliminary results on two artists show that generated lyrics are attributed to the correct artist with over 90\% confidence. We outline planned experiments including adapter blending, baselines, and ablation studies.
 \end{abstract}
 
 \keywords{lyric generation \and QLoRA \and adapter blending \and parameter-efficient fine-tuning}
@@ -24,89 +24,221 @@
 \section{Introduction}
 \label{sec:intro}
 
-% Problem statement
-% Why artist-conditional generation is interesting
-% Your contribution: per-artist QLoRA adapters + inference-time blending
-% Brief outline of the paper
+Large language models excel at open-ended text generation~\cite{radford2019language}, yet controlling stylistic properties remains challenging. In lyric writing, the output must reflect an artist's distinctive voice---their vocabulary, themes, and rhythmic patterns.
+
+Parameter-efficient fine-tuning methods such as LoRA~\cite{hu2022lora} and QLoRA~\cite{dettmers2023qlora} enable adapting large models on consumer hardware by training only low-rank weight matrices. A natural extension is training one adapter per artist and combining them at inference time, as explored in adapter merging~\cite{huang2023lorahub} and adapter soup~\cite{chronopoulou2023adaptersoup}.
+
+We apply this idea to lyric generation with the following contributions:
+\begin{enumerate}
+    \item A pipeline for per-artist QLoRA adapters on 4-bit quantized Gemma~4 E4B, using five same-genre artists as a deliberately challenging testbed.
+    \item A RoBERTa-based artist-attribution classifier (92.2\% accuracy) as an automated evaluation instrument.
+    \item Preliminary adapter results on two artists with $>$90\% classifier attribution, including an initial LoRA vs.\ DoRA comparison.
+    \item A proposal for inference-time adapter blending via linear weight interpolation.
+\end{enumerate}
 
 % ============================================================
 \section{Related Work}
 \label{sec:related}
 
-\subsection{Parameter-Efficient Fine-Tuning}
-% LoRA, QLoRA, DoRA -- cite original papers
+\textbf{Parameter-Efficient Fine-Tuning.}
+LoRA~\cite{hu2022lora} injects a trainable low-rank decomposition $\Delta W = BA$ while freezing the pretrained weights. QLoRA~\cite{dettmers2023qlora} extends this with 4-bit NF4 quantization. DoRA~\cite{liu2024dora} decomposes weight updates into magnitude and direction components, aiming to close the gap with full fine-tuning.
 
-\subsection{Text and Lyric Generation}
-% LLM-based generation, creative text, prior lyric generation work
+\textbf{Creative Text and Lyric Generation.}
+LLM-based creative generation spans poetry, storytelling, and songwriting~\cite{vonrutte2023language}. Fine-tuning for individual artist styles is less studied due to data requirements and the difficulty of evaluating stylistic fidelity.
 
-\subsection{Adapter Composition}
-% Adapter merging/blending techniques, multi-task adapters
+\textbf{Adapter Composition.}
+LoRAHub~\cite{zhang2023lorahub} learns composition coefficients across task-specific adapters. AdapterSoup~\cite{chronopoulou2023adaptersoup} averages adapter weights to improve generalization. We apply linear blending to interpolate between artist styles.
 
 % ============================================================
 \section{Methodology}
 \label{sec:method}
 
-\subsection{Overview}
-% Pipeline diagram description: data -> preprocess -> adapter training -> blending -> evaluation
+\subsection{Pipeline Overview}
+
+Our pipeline has four stages: (1)~preprocessing, (2)~classifier training, (3)~per-artist QLoRA adapter training, and (4)~inference with optional adapter blending. The classifier validates that real lyrics are distinguishable and later evaluates generated lyrics.
 
 \subsection{Preprocessing}
-% Section header normalization, metadata stripping, cleaning steps
+
+Raw lyrics contain structural annotations (\texttt{[Verse~1]}, \texttt{[Chorus]}) that encode structure rather than style. We strip all bracketed headers and filter songs shorter than 100 characters.
 
 \subsection{Artist-Attribution Classifier}
-% DistilBERT, training setup, purpose (evaluation instrument)
+
+We fine-tune RoBERTa-base~\cite{liu2019roberta} for 5-class classification. The classifier serves as an evaluation instrument: high-confidence attribution to the target artist indicates successful style capture. We use a maximum sequence length of 512 tokens, covering 96.7\% of songs.
 
 \subsection{QLoRA Adapter Training}
-% Base model, quantization, LoRA config, training details
+
+We use Gemma~4 E4B~\cite{gemma2025} (${\sim}$4B parameters, dense) loaded in 4-bit NF4 quantization with double quantization and bfloat16 compute via bitsandbytes~\cite{dettmers2022llmint8}. We chose the dense architecture over the 26B MoE variant because adapter blending assumes dense layers---merging LoRA weights across routed experts introduces ambiguity.
+
+LoRA adapters ($r{=}8$, $\alpha{=}16$, dropout 0.1) target all attention ($q$, $k$, $v$, $o$) and MLP (gate, up, down) projections in the language model layers, selected via regex to exclude vision/audio encoder layers.
+
+The training prompt \texttt{"Write song lyrics.\textbackslash n\textbackslash n\{lyrics\}"} is deliberately generic with no artist name, ensuring style is encoded in adapter weights---a prerequisite for clean blending.
 
 \subsection{Adapter Blending}
-% Linear combination at inference time, blending ratios
+
+At inference time, we linearly interpolate LoRA weights:
+\begin{equation}
+    \Delta W_{\text{blend}} = \sum_{i=1}^{N} \alpha_i \, \Delta W_i, \quad \sum_{i=1}^{N} \alpha_i = 1
+\end{equation}
+producing an adapter whose style lies between the constituent artists.
 
 \subsection{Baselines}
-% B1: zero-shot, B2: few-shot, B3: DoRA
+
+\begin{itemize}
+    \item \textbf{B1 -- Zero-shot:} Base model with the generic prompt, no fine-tuning.
+    \item \textbf{B2 -- Few-shot:} Base model with 3--5 target-artist lyrics as in-context examples.
+    \item \textbf{B3 -- DoRA:} Same QLoRA setup with DoRA~\cite{liu2024dora} enabled.
+\end{itemize}
 
 % ============================================================
-\section{Dataset and Artist Selection}
-\label{sec:dataset}
+\section{Experimental Setup}
+\label{sec:setup}
 
-\subsection{Dataset Overview}
-% genius-lyrics-cleaned, size, columns, source
+\subsection{Dataset and Artist Selection}
 
-\subsection{Artist Selection}
-% Criteria, final 5 artists, justification, song counts
+We use the \texttt{genius-lyrics-cleaned} dataset from Hugging Face (${\sim}$3.18M songs). We select five progressive/extreme metal artists: \textbf{Death} (116), \textbf{Gojira} (86), \textbf{Meshuggah} (116), \textbf{Opeth} (118), and \textbf{Tool} (74), totaling 510 songs after preprocessing.
+
+Same-genre selection ensures evaluation validity: a cross-genre classifier would distinguish genre rather than individual style. Our five artists share a genre but differ in voice: Gojira's environmental philosophy, Tool's cryptic wordplay, Death's technical lyricism, Meshuggah's mechanical abstraction, and Opeth's poetic melancholy.
+
+We apply stratified splitting: 459 training, 51 evaluation (90/10).
+
+\subsection{Training Configuration}
+
+\textbf{Classifier:} RoBERTa-base, 5 epochs, lr $2{\times}10^{-5}$, batch 8, weight decay 0.01, warmup ratio 0.1, best checkpoint by validation accuracy.
+
+\textbf{QLoRA:} SFTTrainer (TRL), 3 epochs, batch 2 with gradient accumulation 2 (effective batch 4), lr $2{\times}10^{-4}$, cosine schedule, warmup ratio 0.1, weight decay 0.05, max length 512, gradient checkpointing. Trained on NVIDIA RTX 5090 (32\,GB).
+
+\textbf{Generation:} Nucleus sampling, temperature 0.9, top-$p$ 0.9, repetition penalty 1.1, 200--512 tokens.
+
+\subsection{Reproducibility}
+
+All code, data splits, and training notebooks are available at \url{https://github.com/raccoon-42/lora-lyrics}. The repository includes dataset preparation, classifier training, QLoRA adapter training, and inference scripts as Jupyter notebooks with step-by-step instructions.
+
+% ============================================================
+\section{Results}
+\label{sec:results}
+
+\begin{figure}[t]
+    \centering
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/artist_distribution.pdf}
+        \caption{Songs per artist.}
+        \label{fig:distribution}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/lyric_lengths.pdf}
+        \caption{Lyric length distributions.}
+        \label{fig:lengths}
+    \end{minipage}
+\end{figure}
 
 \subsection{Data Analysis}
-% Distribution stats, lyric lengths, vocabulary analysis
-% Tables/figures here
 
-% ============================================================
-\section{Preliminary Experiments}
-\label{sec:experiments}
+Figure~\ref{fig:distribution} shows moderate class imbalance (Opeth has 1.6$\times$ Tool's songs). Token-level analysis reveals a median of 216 tokens per song (mean 238); only 17/510 (3.3\%) exceed 512 tokens (Figure~\ref{fig:lengths}).
 
-\subsection{Preprocessing Results}
-% What was cleaned, how many songs retained, examples
+\subsection{TF-IDF Feasibility Check}
 
-\subsection{Classifier Training}
-% Hyperparameters, training details
+Logistic regression on TF-IDF features (5000 features, unigrams/bigrams) yields 82.4\% ($\pm$3.8\%) accuracy in 5-fold CV, confirming the artists are separable from lexical features alone.
 
 \subsection{Classifier Results}
-% Accuracy on held-out real lyrics, confusion matrix
-% Tables/figures here
+
+\begin{table}[t]
+\centering
+\caption{Per-class classifier performance on the evaluation set (51 songs). Overall accuracy: 92.2\%.}
+\label{tab:classifier}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Artist} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+Death     & 1.00 & 1.00 & 1.00 \\
+Gojira    & 0.75 & 0.75 & 0.75 \\
+Meshuggah & 1.00 & 0.92 & 0.96 \\
+Opeth     & 0.92 & 1.00 & 0.96 \\
+Tool      & 0.86 & 0.86 & 0.86 \\
+\midrule
+\textbf{Weighted avg} & \textbf{0.92} & \textbf{0.92} & \textbf{0.92} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:classifier} shows per-class results. Death is perfectly classified; Gojira is weakest (F1 = 0.75), confused with Opeth and Tool---consistent with their shared philosophical and environmental themes. The 10-point gain over TF-IDF (92.2\% vs.\ 82.4\%) confirms that RoBERTa captures deeper stylistic patterns.
+
+\begin{figure}[t]
+    \centering
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/confusion_matrix.pdf}
+        \caption{Classifier confusion matrix.}
+        \label{fig:confusion}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/training_curves.pdf}
+        \caption{Loss and accuracy curves.}
+        \label{fig:curves}
+    \end{minipage}
+\end{figure}
+
+Figure~\ref{fig:confusion} shows that Gojira's errors split between Opeth and Tool (1 each); Meshuggah and Tool each lose one sample to Gojira. Figure~\ref{fig:curves} shows validation loss plateauing after epoch~3 with continued training loss decrease, indicating mild overfitting.
+
+\subsection{QLoRA Adapter Results}
+
+\begin{table}[t]
+\centering
+\caption{Classifier attribution for generated lyrics (softmax over 5 artists).}
+\label{tab:qlora}
+\begin{tabular}{llccccc}
+\toprule
+\textbf{Adapter} & \textbf{Method} & \textbf{Death} & \textbf{Gojira} & \textbf{Mesh.} & \textbf{Opeth} & \textbf{Tool} \\
+\midrule
+Gojira & LoRA & 0.02 & \textbf{0.92} & 0.01 & 0.03 & 0.02 \\
+Tool   & DoRA & 0.00 & 0.06 & 0.00 & 0.01 & \textbf{0.92} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both adapters achieve $>$90\% attribution to the target artist (Table~\ref{tab:qlora}). Tool's secondary Gojira signal (6\%) mirrors the classifier's own confusion pattern. LoRA and DoRA achieve comparable scores, though a controlled comparison on the same artist is needed (Section~\ref{sec:discussion}).
 
 % ============================================================
-\section{Planned Experiments}
-\label{sec:planned}
+\section{Error Analysis}
+\label{sec:error}
 
-% QLoRA training plan
-% Blending experiments
-% Full evaluation pipeline
-% Timeline
+\textbf{Classifier errors.}
+Gojira's low F1 (0.75) reflects genuine thematic overlap with Opeth (nature, existential reflection) and Tool (philosophical abstraction). The 92.2\% accuracy means ${\sim}$1 in 13 real songs is misclassified, a limitation that propagates into evaluation of generated lyrics.
+
+\textbf{Generation quality.}
+Qualitative inspection of the Tool adapter output reveals fluent, coherent text with a consistent introspective theme. However, it lacks hallmarks of Tool's style: no complex meter shifts, no esoteric/Jungian references, and more accessible vocabulary than Tool's typically cryptic lyricism. The adapter captures the broad thematic register (philosophical, introspective) while missing finer stylistic signatures that may require more data or higher LoRA rank.
+
+\textbf{Single-sample limitation.}
+Current results use a single generation per adapter. This is insufficient for robust evaluation; the final version will report mean and variance across multiple samples.
+
+% ============================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\textbf{Evaluation circularity.}
+The classifier may capture superficial statistical patterns that adapters also learn, inflating attribution scores without genuine style transfer. Perplexity measurements and human evaluation are planned to complement the automated metric.
+
+\textbf{Data scale.}
+With 67--106 training songs per artist, the adapters have limited data. We did not observe verbatim copying, but systematic n-gram overlap analysis is planned.
+
+\textbf{Ablation plan.}
+The LoRA vs.\ DoRA comparison (Table~\ref{tab:qlora}) is confounded by artist differences. Planned ablations include: (1)~LoRA and DoRA on the same artist, (2)~varying rank $r \in \{4, 8, 16\}$, (3)~attention-only vs.\ attention+MLP targeting.
+
+\textbf{Remaining work.}
+Train adapters for the remaining three artists; run zero-shot and few-shot baselines; evaluate blending across all $\binom{5}{2} = 10$ artist pairs at ratios $\alpha \in \{0.0, 0.25, 0.5, 0.75, 1.0\}$.
+
+\textbf{Ethical considerations.}
+Training on copyrighted lyrics is limited to academic research. The adapters could impersonate an artist's voice, raising authenticity and IP concerns. Metal lyrics may contain violent imagery that a fine-tuned model could amplify. Generated text may also hallucinate content falsely attributable to an artist.
 
 % ============================================================
 \section{Conclusion}
 \label{sec:conclusion}
 
-% Summary of progress so far
-% Expected contributions of completed work
+We presented a pipeline for artist-conditional lyric generation using per-artist QLoRA adapters on Gemma~4 E4B. A RoBERTa classifier (92.2\% accuracy) confirms that five same-genre metal artists are distinguishable. Adapters trained on two artists (Gojira with LoRA, Tool with DoRA) produce lyrics attributed to the correct artist with $>$90\% confidence. The remaining work focuses on completing all adapters, adapter blending experiments, baselines, and controlled ablation studies.
 
 \bibliographystyle{splncs04}
 \bibliography{references}

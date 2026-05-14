@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  13 MAY 2026 22:19
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  14 MAY 2026 22:07
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -270,8 +270,7 @@ LaTeX Info: Redefining \] on input line 2951.
 ) (/usr/local/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count330
-)
-No file main.aux.
+) (./main.aux)
 \openout1 = `main.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 7.
@@ -288,6 +287,7 @@ LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 7.
 LaTeX Font Info:    ... okay on input line 7.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 7.
 LaTeX Font Info:    ... okay on input line 7.
+
 (/usr/local/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count331
@@ -343,41 +343,112 @@ G,.JBIG2,.JB2,.eps]
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-No file main.bbl.
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [1
+[1
 
 {/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/loc
-al/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}] [2] (./m
-ain.aux)
+al/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
+Overfull \hbox (4.13457pt too wide) in paragraph at lines 49--51
+[]\OT1/cmr/bx/n/10 Adapter Com-po-si-tion. \OT1/cmr/m/n/10 Lo-RAHub [11] learns
+ com-po-si-tion co-ef-fi-cients across
+ []
+
+LaTeX Font Info:    Trying to load font information for OMS+cmtt on input line 
+74.
+LaTeX Font Info:    No file OMScmtt.fd. on input line 74.
+
+LaTeX Font Warning: Font shape `OMS/cmtt/m/n' undefined
+(Font)              using `OMS/cmsy/m/n' instead
+(Font)              for symbol `textbackslash' on input line 74.
+
+[2]
+Overfull \hbox (1.56926pt too wide) in paragraph at lines 98--99
+\OT1/cmr/m/n/10 We use the \OT1/cmtt/m/n/10 genius-lyrics-cleaned \OT1/cmr/m/n/
+10 dataset from Hug-ging Face ($[]$3.18M songs).
+ []
+
+
+Overfull \hbox (0.3492pt too wide) in paragraph at lines 100--101
+[]\OT1/cmr/m/n/10 Same-genre se-lec-tion en-sures eval-u-a-tion va-lid-ity: a c
+ross-genre clas-si-fier would
+ []
+
+
+Overfull \hbox (3.5121pt too wide) in paragraph at lines 110--111
+[]\OT1/cmr/bx/n/10 Generation: \OT1/cmr/m/n/10 Nu-cleus sam-pling, tem-per-a-tu
+re 0.9, top-$\OML/cmm/m/it/10 p$ \OT1/cmr/m/n/10 0.9, rep-e-ti-tion penalty
+ []
+
+
+Overfull \hbox (36.51617pt too wide) in paragraph at lines 114--115
+\OT1/cmr/m/n/10 All code, data splits, and train-ing note-books are avail-able 
+at https://github.com/raccoon-
+ []
+
+[3]
+<figures/artist_distribution.pdf, id=26, 569.70097pt x 352.34511pt>
+File: figures/artist_distribution.pdf Graphic file (type pdf)
+<use figures/artist_distribution.pdf>
+Package pdftex.def Info: figures/artist_distribution.pdf  used on input line 12
+4.
+(pdftex.def)             Requested size: 166.61781pt x 103.04843pt.
+<figures/lyric_lengths.pdf, id=27, 570.64946pt x 352.34511pt>
+File: figures/lyric_lengths.pdf Graphic file (type pdf)
+<use figures/lyric_lengths.pdf>
+Package pdftex.def Info: figures/lyric_lengths.pdf  used on input line 131.
+(pdftex.def)             Requested size: 166.61781pt x 102.87637pt.
+<figures/confusion_matrix.pdf, id=28, 402.87967pt x 352.34511pt>
+File: figures/confusion_matrix.pdf Graphic file (type pdf)
+<use figures/confusion_matrix.pdf>
+Package pdftex.def Info: figures/confusion_matrix.pdf  used on input line 172.
+(pdftex.def)             Requested size: 166.61781pt x 145.7151pt.
+<figures/training_curves.pdf, id=29, 859.66985pt x 352.34511pt>
+File: figures/training_curves.pdf Graphic file (type pdf)
+<use figures/training_curves.pdf>
+Package pdftex.def Info: figures/training_curves.pdf  used on input line 179.
+(pdftex.def)             Requested size: 166.61781pt x 68.29034pt.
+ [4 <./figures/artist_distribution.pdf> <./figures/lyric_lengths.pdf>]
+[5 <./figures/confusion_matrix.pdf> <./figures/training_curves.pdf>]
+Overfull \hbox (11.07886pt too wide) in paragraph at lines 215--217
+[]\OT1/cmr/bx/n/10 Single-sample lim-i-ta-tion. \OT1/cmr/m/n/10 Cur-rent re-sul
+ts use a sin-gle gen-er-a-tion per adapter.
+ []
+
+(./main.bbl [6]) [7] (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  ) 
 Here is how much of TeX's memory you used:
- 3156 strings out of 467525
- 49037 string characters out of 5418983
- 462620 words of memory out of 5000000
- 32045 multiletter control sequences out of 15000+600000
- 630635 words of font info for 50 fonts, out of 8000000 for 9000
+ 3254 strings out of 467525
+ 51293 string characters out of 5418983
+ 467960 words of memory out of 5000000
+ 32130 multiletter control sequences out of 15000+600000
+ 632946 words of font info for 59 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 59i,6n,67p,202b,193s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 59i,8n,67p,826b,340s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
 </usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx9.pfb></
-usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></us
-r/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/l
-ocal/texlive/2026/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb>
-Output written on main.pdf (2 pages, 85475 bytes).
+usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></u
+sr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></us
+r/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/
+local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/lo
+cal/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local
+/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/te
+xlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/tex
+live/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texli
+ve/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texliv
+e/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt9.pfb></usr/local/texlive/
+2026/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb>
+Output written on main.pdf (7 pages, 257269 bytes).
 PDF statistics:
- 42 PDF objects out of 1000 (max. 8388607)
- 25 compressed objects within 1 object stream
+ 276 PDF objects out of 1000 (max. 8388607)
+ 82 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 21 words of extra memory for PDF output out of 10000 (max. 10000000)
 
