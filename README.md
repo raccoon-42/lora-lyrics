@@ -15,14 +15,13 @@ Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation,
 │   ├── references.bib
 │   └── figures/
 ├── src/
-│   ├── 01_inspect.ipynb     # Dataset exploration
-│   ├── 02_preprocess.ipynb  # Artist selection, cleaning, train/eval split
-│   ├── 03_classifier.ipynb  # RoBERTa classifier training
-│   ├── 04_figures.ipynb     # Report figure generation
-│   ├── 05_qlora_train.ipynb # QLoRA adapter training (per-artist)
-│   ├── 06_inference.ipynb   # Generate lyrics from trained adapters
-│   ├── 07_test.ipynb        # Evaluate generated lyrics with classifier
-│   ├── pyproject.toml       # Python dependencies
+│   ├── 01_inspect.ipynb      # Dataset exploration
+│   ├── 02_preprocess.ipynb   # Artist selection, cleaning, train/eval split
+│   ├── 03_classifier.ipynb   # RoBERTa classifier training + report figures
+│   ├── 04_baselines.ipynb    # Zero-shot and few-shot baselines
+│   ├── 05_train.ipynb        # QLoRA adapter training (per-artist)
+│   ├── 06_evaluation.ipynb   # Generate lyrics + classify with RoBERTa
+│   ├── pyproject.toml        # Python dependencies
 │   └── uv.lock
 ```
 
@@ -71,30 +70,27 @@ jupyter notebook 03_classifier.ipynb
 
 Trains a RoBERTa-base artist-attribution classifier (5 classes, 92.2% accuracy). Runs on CPU/MPS in ~5 minutes.
 
-### 4. Report Figures
+### 4. Baselines (requires CUDA GPU)
 
 ```bash
-jupyter notebook 04_figures.ipynb
-# Outputs: report/figures/*.pdf
+jupyter notebook 04_baselines.ipynb
+# Runs zero-shot and few-shot generation for all artists, classifies output
 ```
 
 ### 5. QLoRA Adapter Training (requires CUDA GPU)
 
 ```bash
-jupyter notebook 05_qlora_train.ipynb
-# Outputs: adapters/<artist_name>/
+jupyter notebook 05_train.ipynb
+# Outputs: adapters/<artist>_<method>_r<rank>/
 ```
 
-Downloads Gemma 4 E4B on first run (requires Hugging Face authentication with access to the model). Trains one adapter per artist. Modify the `artist` variable in the training cell to select which artist to train.
+Downloads Gemma 4 E4B on first run (requires Hugging Face authentication with access to the model). Uses `train_adapter(artist, r=8, use_dora=False)` to train adapters with configurable rank and LoRA/DoRA.
 
-### 6. Inference and Evaluation
+### 6. Evaluation (requires CUDA GPU)
 
 ```bash
-# Generate lyrics from a trained adapter
-jupyter notebook 06_inference.ipynb
-
-# Evaluate generated lyrics against the classifier
-jupyter notebook 07_test.ipynb
+jupyter notebook 06_evaluation.ipynb
+# Generates lyrics from trained adapters and classifies with RoBERTa
 ```
 
 ## Key Configuration
