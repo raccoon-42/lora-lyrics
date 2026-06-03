@@ -10,20 +10,32 @@ Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation,
 ## Repository Structure
 
 ```
-├── report/                  # LNCS report (LaTeX source + figures)
+├── report/                      # LNCS report (LaTeX source + figures)
 │   ├── main.tex
 │   ├── references.bib
 │   └── figures/
 ├── src/
-│   ├── 01_inspect.ipynb      # Dataset exploration
-│   ├── 02_preprocess.ipynb   # Artist selection, cleaning, train/eval split
-│   ├── 03_classifier.ipynb   # RoBERTa classifier training + report figures
-│   ├── 04_baselines.ipynb    # Zero-shot and few-shot baselines
-│   ├── 05_train.ipynb        # QLoRA adapter training (per-artist)
-│   ├── 06_evaluation.ipynb   # Generate lyrics + classify with RoBERTa
-│   ├── pyproject.toml        # Python dependencies
+│   ├── 01_inspect.ipynb          # Dataset exploration
+│   ├── 02_preprocess.ipynb       # Artist selection, cleaning, train/eval split
+│   ├── 03_classifier.ipynb       # RoBERTa classifier training + report figures
+│   ├── 04_baselines.ipynb        # Display-only: zero-shot / few-shot results
+│   ├── 05_train_adapters.ipynb   # QLoRA adapter training (per-artist + ablations)
+│   ├── 06_evaluation.ipynb       # Display-only: adapter attribution + figures
+│   ├── 07_blend.ipynb            # Adapter blending (CPU build) + display-only results
+│   ├── 08_perplexity.ipynb       # Cross-artist perplexity matrix (GPU)
+│   ├── 09_sw_compare.ipynb       # Display-only: plain vs style-weighted adapter
+│   ├── evaluate.py               # Single GPU entry point: caches all eval results
+│   ├── config.py                 # Shared paths, constants, Adapter registry
+│   ├── generation/               # Base model, data, adapter training, generation
+│   ├── classifier/               # RoBERTa model, data, training, classify
+│   ├── evaluation/               # Attribution metrics, perplexity, blending
+│   ├── artifacts/                # Trained weights (adapters/ + classifier/)
+│   ├── results/                  # Cached eval results (gitignored, reproducible)
+│   ├── pyproject.toml            # Python dependencies
 │   └── uv.lock
 ```
+
+All GPU evaluation compute lives in `evaluate.py` (loads the base model + classifier once, then caches baselines, adapter, and blend results under `results/`). The `04`/`06`/`07`/`09` notebooks are **display-only**: they read those caches to build tables and figures, no model load.
 
 ## Reproducing Results
 
@@ -65,32 +77,47 @@ The dataset (`genius-lyrics-cleaned`) is downloaded automatically from Hugging F
 
 ```bash
 jupyter notebook 03_classifier.ipynb
-# Outputs: classifier_output/best_model/
+# Outputs: artifacts/classifier/best_model/
 ```
 
 Trains a RoBERTa-base artist-attribution classifier (5 classes, 92.2% accuracy). Runs on CPU/MPS in ~5 minutes.
 
-### 4. Baselines (requires CUDA GPU)
+### 4. QLoRA Adapter Training (requires CUDA GPU)
 
 ```bash
-jupyter notebook 04_baselines.ipynb
-# Runs zero-shot and few-shot generation for all artists, classifies output
+jupyter notebook 05_train_adapters.ipynb
+# Outputs: artifacts/adapters/<artist>_<method>_r<rank>/
 ```
 
-### 5. QLoRA Adapter Training (requires CUDA GPU)
+Downloads Gemma 4 E4B on first run (requires Hugging Face authentication with access to the model). Uses `train_adapter(model, tokenizer, train_df, artist, r=8, use_dora=False, ...)` to train adapters with configurable rank, LoRA/DoRA, and optional style-weighted loss. Trains the main per-artist set plus the rank/DoRA/style-weighted ablations.
+
+### 5. Evaluation compute (requires CUDA GPU)
 
 ```bash
-jupyter notebook 05_train.ipynb
-# Outputs: adapters/<artist>_<method>_r<rank>/
+uv run python evaluate.py
 ```
 
-Downloads Gemma 4 E4B on first run (requires Hugging Face authentication with access to the model). Uses `train_adapter(artist, r=8, use_dora=False)` to train adapters with configurable rank and LoRA/DoRA.
+Single GPU entry point. Loads the base model + classifier once, then generates and classifies for baselines (zero-shot + few-shot), every registered adapter, and the blend sweep, caching one JSON per result under `results/`. Re-runs are incremental:
 
-### 6. Evaluation (requires CUDA GPU)
+- baselines recompute only when their spec (n_samples + prompt) changes
+- adapters recompute only when their weights are newer than the cached entry
+- blends recompute only when their spec (n_samples + alpha + source mtimes) changes
+
+Use `--force` to ignore all caches, or `--force-baselines` / `--force-adapters` / `--force-blends` to refresh one group (e.g. after changing the generation seed).
+
+### 6. Figures and analysis (CPU, display-only)
 
 ```bash
-jupyter notebook 06_evaluation.ipynb
-# Generates lyrics from trained adapters and classifies with RoBERTa
+jupyter notebook 04_baselines.ipynb    # baseline tables
+jupyter notebook 06_evaluation.ipynb   # adapter attribution + comparison figures
+jupyter notebook 07_blend.ipynb        # blend build/validation + interpolation figure
+jupyter notebook 09_sw_compare.ipynb   # plain vs style-weighted comparison
+```
+
+These read the caches written by `evaluate.py`; no model is loaded. The cross-artist perplexity matrix is computed separately on GPU:
+
+```bash
+jupyter notebook 08_perplexity.ipynb
 ```
 
 ## Key Configuration
