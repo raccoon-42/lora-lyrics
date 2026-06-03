@@ -30,7 +30,7 @@ Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation,
 │   ├── classifier/               # RoBERTa model, data, training, classify
 │   ├── evaluation/               # Attribution metrics, perplexity, blending
 │   ├── artifacts/                # Trained weights (adapters/ + classifier/)
-│   ├── results/                  # Cached eval results (gitignored, reproducible)
+│   ├── results/                  # Cached eval results (JSON, tracked in git)
 │   ├── pyproject.toml            # Python dependencies
 │   └── uv.lock
 ```
@@ -106,6 +106,8 @@ Single GPU entry point. Loads the base model + classifier once, then generates a
 - blends recompute only when their spec (n_samples + alpha + source mtimes) changes
 
 Use `--force` to ignore all caches, or `--force-baselines` / `--force-adapters` / `--force-blends` to refresh one group (e.g. after changing the generation seed).
+
+The cached JSON under `results/` (including the generated sample text in each entry) is committed to the repository, so the display-only notebooks, figures, and report can be reproduced on a machine without a GPU.
 
 ### 6. Figures and analysis (CPU, display-only)
 
