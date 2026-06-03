@@ -34,7 +34,10 @@ def train_adapter(
     spec = Adapter(artist, "dora" if use_dora else "lora", r, sw=style_weights is not None)
     output_dir = str(spec.path)
 
-    if spec.path.exists() and not overwrite:
+    # Key on the final saved weights, not mere dir existence -- the dir also holds
+    # intermediate checkpoint-*/ subdirs, so a crashed run leaves a dir with no
+    # adapter_model.safetensors at the root. (This is the file blend.py loads.)
+    if (spec.path / "adapter_model.safetensors").exists() and not overwrite:
         print(f"[skip] adapter exists, not retraining: {output_dir} (overwrite=True to force)")
         return output_dir
 
