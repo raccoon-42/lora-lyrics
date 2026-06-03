@@ -16,11 +16,17 @@ def bnb_config():
     )
 
 
+def load_tokenizer(model_path=MODEL_PATH):
+    """Just the tokenizer (no 4-bit model) -- for display-only notebooks that need
+    vocab/encoding but not generation."""
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
+
+
 def load_base_model(model_path=MODEL_PATH):
     """Return (model, tokenizer) for the 4-bit base LM, pad token set to eos."""
     model = AutoModelForCausalLM.from_pretrained(
         model_path, quantization_config=bnb_config(), device_map="auto"
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    tokenizer.pad_token = tokenizer.eos_token
-    return model, tokenizer
+    return model, load_tokenizer(model_path)
