@@ -15,6 +15,3 @@ GEMINI.md
 
 # Weight artifacts (too large for git)
 src/artifacts/
-
-# Generated eval caches (reproducible via 04_baselines / evaluate.py)
-src/results/
