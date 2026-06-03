@@ -8,13 +8,10 @@ __pycache__/
 # Models (too large for git)
 src/models/
 
-# Training outputs
-src/classifier_output/
-
 # Data
 src/data/
 
 GEMINI.md
 
-# Adapters
-src/adapters/*
+# Weight artifacts (too large for git)
+src/artifacts/

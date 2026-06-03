@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 MODEL_PATH = "./models/gemma-4-E4B"
-CLF_PATH = "./classifier_output/best_model"
+CLF_PATH = "./artifacts/classifier/best_model"
 
-ADAPTERS_DIR = Path("adapters")
+ADAPTERS_DIR = Path("artifacts/adapters")
 DATA_DIR = Path("data")
 RESULTS_DIR = Path("results")          # cached numeric results (e.g. baselines.json)
 FIGURES_DIR = Path("../report/figures")

@@ -21,7 +21,7 @@ def compute_metrics(eval_pred):
 def train_classifier(
     train_dataset, eval_dataset, label2id, id2label,
     model_name="roberta-base", cache_dir="./hf_cache",
-    output_dir="./classifier_output", epochs=5, lr=2e-5,
+    output_dir="./artifacts/classifier", epochs=5, lr=2e-5,
     weight_decay=0.01, seed=42,
 ):
     """Build the model + Trainer, fine-tune, and return the trained Trainer."""
