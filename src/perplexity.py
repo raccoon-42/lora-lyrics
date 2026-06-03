@@ -29,7 +29,7 @@ import math
 
 import torch
 
-PROMPT = "Write song lyrics.\n\n"
+from config import PROMPT
 
 
 @torch.no_grad()
