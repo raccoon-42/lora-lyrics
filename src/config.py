@@ -26,7 +26,7 @@ _KIND_LABEL = {"lora": "LoRA", "dora": "DoRA"}
 @dataclass(frozen=True)
 class Adapter:
     """One trained adapter. `name`/`path`/`label` are derived so the naming
-    convention (matching `train_adapter` in 05_train) lives in one place."""
+    convention (matching `train_adapter` in 05_train_adapters) lives in one place."""
 
     artist: str
     kind: str = "lora"      # "lora" | "dora"
@@ -50,7 +50,7 @@ class Adapter:
 
 def adapter_registry():
     """Canonical list of adapters the project trains -- single source of truth for
-    05_train (the plan), 06_evaluation, and 08_perplexity.
+    05_train_adapters (the plan), 06_evaluation, and 08_perplexity.
 
     Main set: LoRA + DoRA r=8 for every artist. Plus Gojira-only ablation extras
     (rank sweep + style-weighted)."""
