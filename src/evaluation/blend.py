@@ -17,7 +17,7 @@ import json
 import torch
 from safetensors.torch import load_file, save_file
 
-from config import ADAPTERS_DIR
+from config import ADAPTERS_DIR, blend_pair_key
 
 
 def load_lora(name):
@@ -51,7 +51,7 @@ def blend_adapters(name_a, name_b, alpha, out_name=None):
             raise ValueError(f"unexpected key {k}")
         blended[k] = t.to(sd_a[k].dtype)
 
-    out_name = out_name or f"blend_{name_a.split('_')[0]}_{name_b.split('_')[0]}_a{alpha:.2f}"
+    out_name = out_name or f"blend_{blend_pair_key(name_a, name_b)}_a{alpha:.2f}"
     out_dir = ADAPTERS_DIR / out_name
     out_dir.mkdir(parents=True, exist_ok=True)
 

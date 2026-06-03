@@ -87,3 +87,14 @@ def main_adapters():
     """The per-artist headline adapter (LoRA r=8, no SW) -- one per artist. Used
     for the perplexity diagonal and any 'one adapter per artist' view."""
     return [a for a in adapter_registry() if a.kind == "lora" and a.rank == 8 and not a.sw]
+
+
+def blend_pair_key(src_a, src_b):
+    """Cache/dir key for a blend of two source-adapter names. Keeps the artist
+    plus the sw flag (drops lora_r8) so plain and SW pairs don't collide --
+    e.g. gojira_tool (plain) vs gojira_sw_tool_sw (SW). Single source of truth
+    shared by evaluate.py (writer) and 07_blend.ipynb (reader)."""
+    def tag(name):
+        artist = name.split("_")[0]
+        return f"{artist}_sw" if name.endswith("_sw") else artist
+    return f"{tag(src_a)}_{tag(src_b)}"

@@ -24,7 +24,7 @@ import random
 import pandas as pd
 import torch
 
-from config import ARTISTS, DATA_DIR, RESULTS_DIR, ADAPTERS_DIR as WEIGHTS_DIR, adapter_registry
+from config import ARTISTS, DATA_DIR, RESULTS_DIR, ADAPTERS_DIR as WEIGHTS_DIR, adapter_registry, blend_pair_key
 from classifier.classify import classify
 from classifier.model import load_classifier
 from evaluation.blend import blend_adapters
@@ -37,7 +37,16 @@ FEWSHOT_EXAMPLES = 3
 FEWSHOT_SEED = 42
 GEN_SEED = 0          # reset before each adapter/blend eval -> paired sampling noise across adapters
 
-BLEND_PAIRS = [("gojira_lora_r8", "tool_lora_r8")]
+# Gojira-anchored SW set: same Gojira-SW endpoint in every pair -> alpha = Gojira
+# weight everywhere, so the 4 crossover curves overlay on one axis. SW adapters are
+# plain LoRA r8 structurally (SW only changes training loss), so they blend the same way.
+BLEND_PAIRS = [
+    ("gojira_lora_r8", "tool_lora_r8"),          # original plain reference pair
+    ("gojira_lora_r8_sw", "tool_lora_r8_sw"),
+    ("gojira_lora_r8_sw", "death_lora_r8_sw"),
+    ("gojira_lora_r8_sw", "opeth_lora_r8_sw"),
+    ("gojira_lora_r8_sw", "mastodon_lora_r8_sw"),
+]
 BLEND_ALPHAS = [0.0, 0.25, 0.5, 0.75, 1.0]   # 1 = pure first source
 
 BASELINES_DIR = RESULTS_DIR / "baselines"
@@ -128,7 +137,7 @@ def run_blends(base_model, tokenizer, clf, force=False):
             print(f"skip blend {src_a}+{src_b}: source adapter missing")
             continue
 
-        pair = f"{src_a.split('_')[0]}_{src_b.split('_')[0]}"   # e.g. gojira_tool
+        pair = blend_pair_key(src_a, src_b)   # gojira_tool / gojira_sw_tool_sw
         src_mtimes = [_weights_mtime(pa), _weights_mtime(pb)]
         for alpha in BLEND_ALPHAS:
             cache_file = BLENDS_DIR / pair / f"a{alpha:.2f}.json"
@@ -139,7 +148,8 @@ def run_blends(base_model, tokenizer, clf, force=False):
                 continue
 
             print(f"\n=== blend {pair} a={alpha:.2f} ===")
-            blend_name = blend_adapters(src_a, src_b, alpha)   # CPU: (re)writes rank-2r adapter
+            blend_name = blend_adapters(src_a, src_b, alpha,   # CPU: (re)writes rank-2r adapter
+                                        out_name=f"blend_{pair}_a{alpha:.2f}")
             torch.manual_seed(GEN_SEED)
             samples, df = evaluate_adapter(base_model, tokenizer, clf, WEIGHTS_DIR / blend_name)
             cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +157,9 @@ def run_blends(base_model, tokenizer, clf, force=False):
                 json.dump({"src_a": src_a, "src_b": src_b, "alpha": alpha,
                            "samples": samples, "df": df.to_dict(orient="list"),
                            "spec": spec}, f, indent=2)
-            print(f"  Gojira={df['Gojira'].mean():.4f}  Tool={df['Tool'].mean():.4f}  "
+            ea = next(a for a in ARTISTS if a.lower() == src_a.split('_')[0])  # alpha-weighted endpoint
+            eb = next(a for a in ARTISTS if a.lower() == src_b.split('_')[0])  # (1-alpha)-weighted endpoint
+            print(f"  {ea}={df[ea].mean():.4f}  {eb}={df[eb].mean():.4f}  "
                   f"(wrote {pair}/a{alpha:.2f}.json)")
 
 
