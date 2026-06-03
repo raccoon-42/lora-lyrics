@@ -76,6 +76,8 @@ def adapter_registry():
         Adapter("Gojira", "lora", 16),
         Adapter("Gojira", "lora", 8, sw=True),
         Adapter("Tool", "lora", 8, sw=True),
+        Adapter("Death", "lora", 8, sw=True),
+        Adapter("Opeth", "lora", 8, sw=True),
     ]
     return specs
 
