@@ -11,6 +11,8 @@ lyrics (generation side), and scores them (classifier side). The perplexity
 helpers are re-exported here so notebooks have one import for all of evaluation.
 """
 
+import re
+
 import pandas as pd
 import torch
 from peft import PeftModel
@@ -49,24 +51,44 @@ def attribution_stats(df, target):
     return df[target].mean(), df[target].std()
 
 
-def distinctive_tokens(weights, tokenizer, n=40, min_len=3):
+def distinctive_tokens(weights, tokenizer, n=40, min_len=3, drop_stopwords=False):
     """Set of an artist's top-`n` distinctive tokens, lowercased and filtered to
     alphabetic tokens of length >= `min_len` (drops subword fragments and
-    punctuation). `weights` come from `generation.style_loss.build_style_weights`."""
+    punctuation). `weights` come from `generation.style_loss.build_style_weights`.
+
+    `drop_stopwords` additionally removes English function words (sklearn's list).
+    This is a per-artist knob: token-level TF-IDF cleanly captures lexically-concrete
+    styles (e.g. Gojira: mountains/stars/ocean) but for register-based styles
+    (e.g. Tool) the top tokens are diluted by function words, so filtering gives a
+    fairer view of distinctive *content* vocabulary."""
     _, idx = torch.topk(weights, n)
     toks = (tokenizer.decode([i]).strip() for i in idx)
-    return {t.lower() for t in toks if t.isalpha() and len(t) >= min_len}
+    out = {t.lower() for t in toks if t.isalpha() and len(t) >= min_len}
+    if drop_stopwords:
+        from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+        out -= set(ENGLISH_STOP_WORDS)
+    return out
+
+
+def _word_patterns(tokens):
+    # Whole-word matching: substring matching overcounts badly (e.g. the subword
+    # fragment "uck" matches inside every "fuck", "low" inside "below"). Word
+    # boundaries make such fragments inert and stop short tokens matching inside
+    # unrelated words.
+    return [re.compile(rf"\b{re.escape(t)}\b") for t in tokens]
 
 
 def token_occurrences(samples, tokens):
-    """Total occurrences of `tokens` across `samples` (counts repeats -- sensitive
-    to degeneration/looping)."""
-    return sum(s.lower().count(t) for s in samples for t in tokens)
+    """Total whole-word occurrences of `tokens` across `samples` (counts repeats --
+    sensitive to degeneration/looping)."""
+    pats = _word_patterns(tokens)
+    return sum(len(p.findall(s.lower())) for s in samples for p in pats)
 
 
 def token_types(samples, tokens):
-    """Mean number of *distinct* `tokens` present per sample (ignores repeats --
-    measures vocabulary breadth, not loop count)."""
+    """Mean number of *distinct* `tokens` present (as whole words) per sample
+    (ignores repeats -- measures vocabulary breadth, not loop count)."""
     if not samples:
         return 0.0
-    return sum(sum(t in s.lower() for t in tokens) for s in samples) / len(samples)
+    pats = _word_patterns(tokens)
+    return sum(sum(bool(p.search(s.lower())) for p in pats) for s in samples) / len(samples)
