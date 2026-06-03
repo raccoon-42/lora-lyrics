@@ -5,7 +5,7 @@ Izmir Institute of Technology, Spring 2026
 
 ## Overview
 
-Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation, with inference-time adapter blending for style interpolation. A RoBERTa-based artist-attribution classifier (92.2% accuracy) serves as the evaluation instrument.
+Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation, with inference-time adapter blending for style interpolation. A RoBERTa-based artist-attribution classifier (~84% accuracy over five artists) serves as the evaluation instrument.
 
 ## Repository Structure
 
@@ -71,7 +71,7 @@ jupyter notebook 02_preprocess.ipynb
 # Outputs: data/train.csv, data/eval.csv
 ```
 
-The dataset (`genius-lyrics-cleaned`) is downloaded automatically from Hugging Face on first run.
+The dataset (`genius-lyrics-cleaned`) is downloaded automatically from Hugging Face on first run. Cleaning strips section headers (`[Verse]`, `[Chorus]`), drops lyrics under 100 characters, and NFKC-normalizes the text (folds scraped Unicode junk such as exotic whitespace and homoglyphs while preserving line breaks).
 
 ### 3. Classifier Training
 
@@ -80,7 +80,7 @@ jupyter notebook 03_classifier.ipynb
 # Outputs: artifacts/classifier/best_model/
 ```
 
-Trains a RoBERTa-base artist-attribution classifier (5 classes, 92.2% accuracy). Runs on CPU/MPS in ~5 minutes.
+Trains a RoBERTa-base artist-attribution classifier (5 classes, ~84% accuracy). Runs on CPU/MPS in ~5 minutes.
 
 ### 4. QLoRA Adapter Training (requires CUDA GPU)
 
@@ -90,6 +90,8 @@ jupyter notebook 05_train_adapters.ipynb
 ```
 
 Downloads Gemma 4 E4B on first run (requires Hugging Face authentication with access to the model). Uses `train_adapter(model, tokenizer, train_df, artist, r=8, use_dora=False, ...)` to train adapters with configurable rank, LoRA/DoRA, and optional style-weighted loss. Trains the main per-artist set plus the rank/DoRA/style-weighted ablations.
+
+`train_adapter` skips any adapter whose weights already exist on disk, so re-running the notebook only trains what is missing. To retrain an existing adapter, pass `overwrite=True` (or delete its directory under `artifacts/adapters/`) — this is what forces a rebuild after the training data or preprocessing changes.
 
 ### 5. Evaluation compute (requires CUDA GPU)
 
@@ -137,6 +139,8 @@ jupyter notebook 08_perplexity.ipynb
 |--------|-------|-------|
 | Death | 116 | Technical, philosophical |
 | Gojira | 86 | Environmental, philosophical |
-| Meshuggah | 116 | Mechanical, abstract |
+| Mastodon | 154 | Sludge/prog, Southern groove |
 | Opeth | 118 | Poetic, melancholic |
 | Tool | 74 | Cryptic, progressive |
+
+All five are progressive/cerebral metal acts of the same broad genre, so the classifier is forced to learn artist identity rather than genre.
