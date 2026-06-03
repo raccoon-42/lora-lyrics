@@ -16,7 +16,13 @@ GEN_KWARGS = dict(
 def generate_lyrics(model, tokenizer, prompt=PROMPT, **gen_kwargs):
     """Sample lyrics from `model`. `gen_kwargs` overrides the defaults in GEN_KWARGS."""
     kwargs = {**GEN_KWARGS, **gen_kwargs}
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096).to(model.device)
     prompt_len = inputs["input_ids"].shape[1]
     outputs = model.generate(**inputs, **kwargs)
     return tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
+
+
+def generate_samples(model, tokenizer, prompt, n, **gen_kwargs):
+    """`n` independent completions from `prompt`, each via generate_lyrics (so the
+    same GEN_KWARGS). Used by the baselines notebook for zero-/few-shot prompts."""
+    return [generate_lyrics(model, tokenizer, prompt=prompt, **gen_kwargs) for _ in range(n)]

@@ -34,13 +34,26 @@ class Adapter:
     sw: bool = False        # style-weighted loss
 
     @property
-    def name(self):
+    def artist_slug(self):
+        return self.artist.lower().replace(" ", "_")
+
+    @property
+    def variant(self):
         suffix = "_sw" if self.sw else ""
-        return f"{self.artist.lower().replace(' ', '_')}_{self.kind}_r{self.rank}{suffix}"
+        return f"{self.kind}_r{self.rank}{suffix}"
+
+    @property
+    def name(self):
+        return f"{self.artist_slug}_{self.variant}"
 
     @property
     def path(self):
         return ADAPTERS_DIR / self.name
+
+    @property
+    def result_relpath(self):
+        """Eval-cache path under results/adapters/, grouped by artist: gojira/lora_r8.json."""
+        return Path(self.artist_slug) / f"{self.variant}.json"
 
     @property
     def label(self):
