@@ -81,7 +81,9 @@ def run_baselines(model, tokenizer, clf, force=False):
     train_df = pd.read_csv(DATA_DIR / "train.csv")
     random.seed(FEWSHOT_SEED)
     for artist in ARTISTS:
-        lyrics = train_df[train_df["artist"] == artist]["lyrics"].tolist()
+        # Use the cleaned column so examples carry no [????] redactions or
+        # [Verse]/[Chorus] headers -- matches the text the adapters train on.
+        lyrics = train_df[train_df["artist"] == artist]["clean"].tolist()
         examples = random.sample(lyrics, FEWSHOT_EXAMPLES)
         prompt = f"Write song lyrics in the style of {artist}.\n\n"
         for i, ex in enumerate(examples, 1):
