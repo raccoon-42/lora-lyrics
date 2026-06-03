@@ -18,7 +18,7 @@ FIGURES_DIR = Path("../report/figures")
 PROMPT = "Write song lyrics.\n\n"
 
 # Held-out / target artists, in lineup order.
-ARTISTS = ["Gojira", "Tool", "Death", "Meshuggah", "Opeth"]
+ARTISTS = ["Gojira", "Tool", "Death", "Mastodon", "Opeth"]
 
 _KIND_LABEL = {"lora": "LoRA", "dora": "DoRA"}
 
@@ -77,6 +77,7 @@ def adapter_registry():
         Adapter("Gojira", "lora", 8, sw=True),
         Adapter("Tool", "lora", 8, sw=True),
         Adapter("Death", "lora", 8, sw=True),
+        Adapter("Mastodon", "lora", 8, sw=True),
         Adapter("Opeth", "lora", 8, sw=True),
     ]
     return specs
