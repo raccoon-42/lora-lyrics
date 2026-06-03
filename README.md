@@ -124,6 +124,20 @@ These read the caches written by `evaluate.py`; no model is loaded. The cross-ar
 jupyter notebook 08_perplexity.ipynb
 ```
 
+## Evaluation
+
+No single automatic metric captures "style," so the project evaluates adapters on three independent axes. The central finding is that they disagree, which is why all three are reported.
+
+- **Attribution** — classifier probability assigned to the target artist (`06_evaluation.ipynb`). Measures distributional fidelity, but is gameable: it rewards surface-marker density, not coherence.
+- **Perplexity** — cross-artist perplexity matrix on held-out lyrics (`08_perplexity.ipynb`). Each artist's own adapter wins its own column (full specialization); read down columns, not across rows.
+- **Lexical coverage** — distinctive-token *types* per sample (breadth) vs. *occurrences* / distinct-$n$ (repetition), in `09_sw_compare.ipynb`. Types is the lexical-richness metric; occurrences is reported only as a degeneration signal, because repetition inflates it.
+
+### Style-Weighted Loss
+
+`generation/style_loss.py` reweights the cross-entropy loss by token-level TF-IDF (each artist corpus treated as one document), up-weighting artist-distinctive tokens during training. Enabling it produces the `*_lora_r8_sw` adapters.
+
+Its effect is **sign-dependent on attribution**: for already-saturated adapters (Gojira, Death, Opeth) it *lowers* attribution while adding genuine lexical breadth, whereas for under-committed adapters (Tool, Mastodon) it *raises* attribution. The Tool gain, however, is a repetition artifact — its lexical-type breadth stays flat while occurrences multiply. This plain-vs-style-weighted contrast is the concrete evidence that attribution, lexical breadth, and degeneration are independent axes; `09_sw_compare.ipynb` builds the comparison.
+
 ## Key Configuration
 
 | Parameter | Value |
