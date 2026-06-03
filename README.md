@@ -130,7 +130,7 @@ No single automatic metric captures "style," so the project evaluates adapters o
 
 - **Attribution** — classifier probability assigned to the target artist (`06_evaluation.ipynb`). Measures distributional fidelity, but is gameable: it rewards surface-marker density, not coherence.
 - **Perplexity** — cross-artist perplexity matrix on held-out lyrics (`08_perplexity.ipynb`). Each artist's own adapter wins its own column (full specialization); read down columns, not across rows.
-- **Lexical coverage** — distinctive-token *types* per sample (breadth) vs. *occurrences* / distinct-$n$ (repetition), in `09_sw_compare.ipynb`. Types is the lexical-richness metric; occurrences is reported only as a degeneration signal, because repetition inflates it.
+- **Lexical coverage** — distinctive-token *types* per sample (breadth) vs. *occurrences* / distinct-n (repetition), in `09_sw_compare.ipynb`. Types is the lexical-richness metric; occurrences is reported only as a degeneration signal, because repetition inflates it.
 
 ### Style-Weighted Loss
 
