@@ -21,6 +21,7 @@ Notebook usage
 """
 
 import math
+import textwrap
 from collections import Counter
 
 import torch
@@ -100,14 +101,18 @@ def build_style_weights(
     return weights
 
 
-def top_tokens(weights, tokenizer, n=30):
-    """Print the n highest-weighted tokens -- a sanity check that the weights
-    actually pick up the artist's distinctive vocabulary."""
+def top_tokens(weights, tokenizer, n=30, label=None):
+    """Print the n highest-weighted tokens as one wrapped line -- a sanity check
+    that the weights pick up the artist's distinctive vocabulary. The weights are
+    clamped (they saturate at `max_weight`), so only the token SET is meaningful;
+    the values are omitted from the printout. Returns the (token, weight) rows."""
     vals, idx = torch.topk(weights, n)
     rows = [(tokenizer.decode([i]).strip(), round(v.item(), 3)) for v, i in zip(vals, idx)]
-    width = max((len(t) for t, _ in rows), default=0)
-    for tok, w in rows:
-        print(f"  {tok:<{width}}  {w}")
+    header = f"{label}: " if label else ""
+    print(textwrap.fill(
+        ", ".join(t for t, _ in rows),
+        width=88, initial_indent=header, subsequent_indent=" " * len(header),
+    ))
     return rows
 
 
