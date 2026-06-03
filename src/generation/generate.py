@@ -1,6 +1,16 @@
 """Lyric sampling from the base model (optionally with an adapter attached)."""
 
-from config import GEN_KWARGS, PROMPT
+from config import PROMPT
+
+# Default sampling config for lyric generation (matches the original 06_evaluation).
+GEN_KWARGS = dict(
+    max_new_tokens=512,
+    min_new_tokens=200,
+    temperature=0.9,
+    top_p=0.9,
+    do_sample=True,
+    repetition_penalty=1.1,
+)
 
 
 def generate_lyrics(model, tokenizer, prompt=PROMPT, **gen_kwargs):

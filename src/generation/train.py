@@ -19,16 +19,26 @@ TARGET_MODULES = r"model\.language_model\.layers\.\d+\.(self_attn\.(q|k|v|o)_pro
 def train_adapter(
     model, tokenizer, train_df, artist,
     r=8, use_dora=False, epochs=3, lr=2e-4, style_weights=None,
+    overwrite=False,
 ):
     """Train one LoRA/DoRA adapter for `artist` and save it under ADAPTERS_DIR.
 
     `model` must already be wrapped with `prepare_model_for_kbit_training`.
     Passing `style_weights` switches to the style-weighted loss and the `_sw`
     output suffix (so SW adapters don't clobber the plain ones).
+
+    If the adapter already exists on disk it is left untouched and its path is
+    returned, so re-running the training cell is a no-op. Pass `overwrite=True`
+    to force a retrain.
     """
-    dataset = artist_dataset(train_df, artist)
     spec = Adapter(artist, "dora" if use_dora else "lora", r, sw=style_weights is not None)
     output_dir = str(spec.path)
+
+    if spec.path.exists() and not overwrite:
+        print(f"[skip] adapter exists, not retraining: {output_dir} (overwrite=True to force)")
+        return output_dir
+
+    dataset = artist_dataset(train_df, artist)
 
     lora_config = LoraConfig(
         r=r,
