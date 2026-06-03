@@ -12,7 +12,7 @@ the GPU.
 
 Notebook usage
 --------------
-    from style_loss import build_style_weights, top_tokens, make_style_loss_func
+    from generation.style_loss import build_style_weights, top_tokens, make_style_loss_func
 
     w = build_style_weights("Gojira", train_df, tokenizer)   # text_col="clean"
     top_tokens(w, tokenizer, n=30)                            # sanity check

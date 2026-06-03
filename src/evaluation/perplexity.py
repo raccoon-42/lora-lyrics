@@ -13,13 +13,12 @@ is more stable than averaging per-song perplexity on a small held-out set.
 
 The forward passes need the GPU (4-bit base). Notebook usage:
 
-    from perplexity import perplexity_matrix, plot_perplexity_matrix
+    from evaluation.perplexity import perplexity_matrix, plot_perplexity_matrix
 
     adapter_map = {
         "base":      None,
         "gojira":    "adapters/gojira_lora_r8",
         "tool":      "adapters/tool_lora_r8",
-        "gojira_sw": "adapters/gojira_lora_r8_sw",   # once trained
     }
     ppl = perplexity_matrix(base_model, tokenizer, adapter_map, eval_df)
     plot_perplexity_matrix(ppl)
