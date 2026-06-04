@@ -24,7 +24,7 @@ import random
 import pandas as pd
 import torch
 
-from config import ARTISTS, DATA_DIR, RESULTS_DIR, ADAPTERS_DIR as WEIGHTS_DIR, adapter_registry, blend_pair_key
+from config import ARTISTS, DATA_DIR, RESULTS_DIR, ADAPTERS_DIR as WEIGHTS_DIR, MODEL_PATH_IT, adapter_registry, blend_pair_key
 from classifier.classify import classify
 from classifier.model import load_classifier
 from evaluation.blend import blend_adapters
@@ -59,7 +59,7 @@ def _weights_mtime(path):
     return max(f.stat().st_mtime for f in path.rglob("*") if f.is_file())
 
 
-def _cache_baseline(model, tokenizer, clf, artist, method, prompt, force=False):
+def _cache_baseline(model, tokenizer, clf, artist, method, prompt, force=False, **gen_kwargs):
     # Spec-based guard: baselines have no weight file, so recompute only when
     # n_samples or the (deterministic) prompt changes. force=True ignores the cache.
     cache_file = BASELINES_DIR / artist.lower().replace(" ", "_") / f"{method}.json"
@@ -69,7 +69,7 @@ def _cache_baseline(model, tokenizer, clf, artist, method, prompt, force=False):
         return
 
     print(f"\n=== {artist} {method} ===")
-    samples = generate_samples(model, tokenizer, prompt, N_SAMPLES)
+    samples = generate_samples(model, tokenizer, prompt, N_SAMPLES, **gen_kwargs)
     df = pd.DataFrame([classify(clf, text) for text in samples])
     cache_file.parent.mkdir(parents=True, exist_ok=True)
     with open(cache_file, "w") as f:
@@ -99,6 +99,69 @@ def run_baselines(model, tokenizer, clf, force=False):
             prompt += f"Example {i}:\n{ex}\n\n"
         prompt += f"Now write new song lyrics in the style of {artist}:\n\n"
         _cache_baseline(model, tokenizer, clf, artist, "few_shot", prompt, force)
+
+
+# B3/B4 use the instruction-tuned model with REALISTIC prompts: name the band and
+# its genre (disambiguates "Tool"/"Gojira") and ask for lyrics only. Few-shot reuses
+# B2's example selection (clean col, FEWSHOT_SEED) so the comparison is fair.
+ARTIST_GENRE = {
+    "Gojira": "the French progressive metal band Gojira",
+    "Tool": "the American progressive metal band Tool",
+    "Death": "the American death metal band Death",
+    "Mastodon": "the American progressive sludge metal band Mastodon",
+    "Opeth": "the Swedish progressive death metal band Opeth",
+}
+_LYRICS_ONLY = " Write only the lyrics, with no title, section labels, commentary, or explanation."
+
+
+def _chat_prompt(tokenizer, content):
+    # Render a single user turn through the model's chat template, with the
+    # generation prompt appended so the model continues as the assistant.
+    return tokenizer.apply_chat_template(
+        [{"role": "user", "content": content}],
+        tokenize=False, add_generation_prompt=True,
+    )
+
+
+def run_baselines_it(clf, force=False):
+    # B3/B4 -- instruction-tuned baselines. Loads the -it model itself (the base
+    # model used for B1/B2/adapters can't follow instructions), runs zero-/few-shot
+    # with proper chat-formatted prompts, then frees it before adapters/blends.
+    model, tokenizer = load_base_model(MODEL_PATH_IT)
+
+    # The chat template already emits BOS -> tell the tokenizer not to add a second
+    # one (detected, not assumed, so it stays correct if the template changes).
+    bos = tokenizer.bos_token
+    add_special = not (bos and _chat_prompt(tokenizer, "x").startswith(bos))
+    # Stop at end-of-turn so the instruct model doesn't ramble past the lyrics.
+    eos_ids = [tokenizer.eos_token_id]
+    eot = tokenizer.convert_tokens_to_ids("<end_of_turn>")
+    if eot is not None and eot != tokenizer.unk_token_id:
+        eos_ids.append(eot)
+    gen_kw = dict(add_special_tokens=add_special, eos_token_id=eos_ids)
+
+    # B3 -- zero-shot (instruct): named band + genre, no examples.
+    for artist in ARTISTS:
+        content = f"Write original song lyrics in the style of {ARTIST_GENRE[artist]}.{_LYRICS_ONLY}"
+        prompt = _chat_prompt(tokenizer, content)
+        _cache_baseline(model, tokenizer, clf, artist, "zero_shot_it", prompt, force, **gen_kw)
+
+    # B4 -- few-shot (instruct): same 3 examples as B2 (clean col, FEWSHOT_SEED).
+    train_df = pd.read_csv(DATA_DIR / "train.csv")
+    random.seed(FEWSHOT_SEED)
+    for artist in ARTISTS:
+        lyrics = train_df[train_df["artist"] == artist]["clean"].tolist()
+        examples = random.sample(lyrics, FEWSHOT_EXAMPLES)
+        content = f"Here are example songs by {ARTIST_GENRE[artist]}:\n\n"
+        for i, ex in enumerate(examples, 1):
+            content += f"Example {i}:\n{ex}\n\n"
+        content += f"Now write original new song lyrics in the same style.{_LYRICS_ONLY}"
+        prompt = _chat_prompt(tokenizer, content)
+        _cache_baseline(model, tokenizer, clf, artist, "few_shot_it", prompt, force, **gen_kw)
+
+    del model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def run_adapters(base_model, tokenizer, clf, force=False):
@@ -167,8 +230,11 @@ def main(force_baselines=False, force_adapters=False, force_blends=False):
     base_model, tokenizer = load_base_model()
     clf = load_classifier()
 
-    print("\n##### BASELINES #####")
+    print("\n##### BASELINES (base model) #####")
     run_baselines(base_model, tokenizer, clf, force=force_baselines)
+
+    print("\n##### BASELINES (instruct model) #####")
+    run_baselines_it(clf, force=force_baselines)
 
     print("\n##### ADAPTERS #####")
     run_adapters(base_model, tokenizer, clf, force=force_adapters)

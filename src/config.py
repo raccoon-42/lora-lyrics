@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 MODEL_PATH = "./models/gemma-4-E4B"
+MODEL_PATH_IT = "./models/gemma-4-E4B-it"   # instruction-tuned variant, for B3/B4 instruct baselines
 CLF_PATH = "./artifacts/classifier/best_model"
 
 ADAPTERS_DIR = Path("artifacts/adapters")

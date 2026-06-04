@@ -13,10 +13,14 @@ GEN_KWARGS = dict(
 )
 
 
-def generate_lyrics(model, tokenizer, prompt=PROMPT, **gen_kwargs):
-    """Sample lyrics from `model`. `gen_kwargs` overrides the defaults in GEN_KWARGS."""
+def generate_lyrics(model, tokenizer, prompt=PROMPT, add_special_tokens=True, **gen_kwargs):
+    """Sample lyrics from `model`. `gen_kwargs` overrides the defaults in GEN_KWARGS.
+
+    `add_special_tokens=False` for prompts that already carry their special tokens
+    (e.g. a chat-template-rendered instruct prompt) -- avoids a doubled BOS."""
     kwargs = {**GEN_KWARGS, **gen_kwargs}
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096).to(model.device)
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096,
+                       add_special_tokens=add_special_tokens).to(model.device)
     prompt_len = inputs["input_ids"].shape[1]
     outputs = model.generate(**inputs, **kwargs)
     return tokenizer.decode(outputs[0][prompt_len:], skip_special_tokens=True)
