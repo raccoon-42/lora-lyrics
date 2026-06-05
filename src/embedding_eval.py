@@ -123,6 +123,11 @@ def project_2d(real_emb, C, gen_sets, use_tsne):
     return real_xy, cent_xy, gen_xy, method
 
 
+def _method_slug(method):
+    """'t-SNE' -> 'tsne', 'PCA' -> 'pca' (for filenames)."""
+    return method.lower().replace("-", "")
+
+
 def _gen_slices(gen_sets):
     """(artist, variant, slice into the stacked gen_xy) for each generated set."""
     out, offset = [], 0
@@ -164,7 +169,7 @@ def plot_map(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method):
     ax.legend(loc="best", fontsize=8)
     fig.tight_layout()
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    out = FIGURES_DIR / "embedding_map.pdf"
+    out = FIGURES_DIR / f"embedding_map_{_method_slug(method)}.pdf"
     fig.savefig(out)
     print(f"Figure -> {out}")
 
@@ -219,7 +224,7 @@ def plot_per_artist(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method):
     fig.suptitle(f"Per-artist embedding maps ({ENCODER}, {method}) -- "
                  "shared projection, illustration only", y=0.995)
     fig.tight_layout()
-    out = FIGURES_DIR / "embedding_map_per_artist.pdf"
+    out = FIGURES_DIR / f"embedding_map_per_artist_{_method_slug(method)}.pdf"
     fig.savefig(out)
     print(f"Figure -> {out}")
 
