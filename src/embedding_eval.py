@@ -100,12 +100,14 @@ def main(use_tsne=False):
     out.write_text(json.dumps({"encoder": ENCODER, "temp": TEMP, "k": K, "rows": rows}, indent=2))
     print(f"\nSummary -> {out}")
 
-    plot_map(real_emb, real_artists, C, gen_sets, use_tsne)
+    real_xy, cent_xy, gen_xy, method = project_2d(real_emb, C, gen_sets, use_tsne)
+    plot_map(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method)
+    plot_per_artist(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method)
 
 
-def plot_map(real_emb, real_artists, C, gen_sets, use_tsne):
-    """2D scatter: real songs (light), centroids (stars), generated samples.
-    Illustration only -- distances are distorted by the projection."""
+def project_2d(real_emb, C, gen_sets, use_tsne):
+    """ONE shared 2D projection for all figures, so positions are comparable
+    across panels. Illustration only -- the projection distorts distances."""
     gen_all = np.vstack([e for _, _, e in gen_sets])
     if use_tsne:
         from sklearn.manifold import TSNE
@@ -118,7 +120,20 @@ def plot_map(real_emb, real_artists, C, gen_sets, use_tsne):
         xy = pca.transform(np.vstack([real_emb, C, gen_all]))
         method = "PCA"
     real_xy, cent_xy, gen_xy = np.split(xy, [len(real_emb), len(real_emb) + len(C)])
+    return real_xy, cent_xy, gen_xy, method
 
+
+def _gen_slices(gen_sets):
+    """(artist, variant, slice into the stacked gen_xy) for each generated set."""
+    out, offset = [], 0
+    for artist, variant, emb in gen_sets:
+        out.append((artist, variant, slice(offset, offset + len(emb))))
+        offset += len(emb)
+    return out
+
+
+def plot_map(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method):
+    """Global 2D scatter: real songs (light), centroids (stars), generated samples."""
     colors = {a: plt.cm.tab10(i) for i, a in enumerate(ARTISTS)}
     adapter_marker = {"lora_r8": ("^", "plain"), "lora_r8_sw": ("s", "SW")}
 
@@ -130,10 +145,8 @@ def plot_map(real_emb, real_artists, C, gen_sets, use_tsne):
                edgecolors="black", linewidths=0.8, zorder=5)
 
     seen = set()
-    offset = 0
-    for artist, variant, emb in gen_sets:
-        pts = gen_xy[offset:offset + len(emb)]
-        offset += len(emb)
+    for artist, variant, sl in _gen_slices(gen_sets):
+        pts = gen_xy[sl]
         if variant in adapter_marker:
             marker, tag = adapter_marker[variant]
             label = f"generated ({tag})" if tag not in seen else None
@@ -152,6 +165,61 @@ def plot_map(real_emb, real_artists, C, gen_sets, use_tsne):
     fig.tight_layout()
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     out = FIGURES_DIR / "embedding_map.pdf"
+    fig.savefig(out)
+    print(f"Figure -> {out}")
+
+
+def plot_per_artist(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method):
+    """2x3 grid: one panel per artist (own real cluster + plain/SW samples,
+    everyone else's real songs in light gray for context) + a 6th panel with
+    all baselines vs the 5 centroids. Same shared projection in every panel."""
+    colors = {a: plt.cm.tab10(i) for i, a in enumerate(ARTISTS)}
+    adapter_marker = {"lora_r8": ("^", "plain"), "lora_r8_sw": ("s", "SW")}
+    slices = _gen_slices(gen_sets)
+
+    fig, axes = plt.subplots(2, 3, figsize=(15, 9), sharex=True, sharey=True)
+    axes = axes.ravel()
+
+    for ax, artist in zip(axes, ARTISTS):
+        own = real_artists == artist
+        ax.scatter(*real_xy[~own].T, color="lightgray", s=10, alpha=0.4, zorder=1)
+        ax.scatter(*real_xy[own].T, color=colors[artist], s=16, alpha=0.45,
+                   label="real", zorder=2)
+        ax.scatter(*cent_xy[ARTISTS.index(artist)], color=colors[artist], marker="*",
+                   s=340, edgecolors="black", linewidths=0.8, zorder=5)
+        for a, variant, sl in slices:
+            if a != artist or variant not in adapter_marker:
+                continue
+            marker, tag = adapter_marker[variant]
+            ax.scatter(*gen_xy[sl].T, color=colors[artist], marker=marker, s=55,
+                       edgecolors="black", linewidths=0.6, label=tag, zorder=4)
+        ax.set_title(artist)
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.legend(loc="best", fontsize=8)
+
+    # 6th panel: baselines vs all centroids -- OOD junk vs every cluster.
+    ax = axes[len(ARTISTS)]
+    ax.scatter(*real_xy.T, color="lightgray", s=10, alpha=0.4, zorder=1)
+    ax.scatter(*cent_xy.T, c=[colors[a] for a in ARTISTS], marker="*", s=340,
+               edgecolors="black", linewidths=0.8, zorder=5)
+    seen = set()
+    for a, variant, sl in slices:
+        if variant in adapter_marker:
+            continue
+        label = variant if variant not in seen else None
+        seen.add(variant)
+        marker = "x" if variant.startswith("zero") else "+"
+        color = "dimgray" if variant.endswith("_it") else "gray"
+        ax.scatter(*gen_xy[sl].T, color=color, marker=marker, s=42, alpha=0.8,
+                   label=label, zorder=3)
+    ax.set_title("baselines (all targets)")
+    ax.set_xticks([]); ax.set_yticks([])
+    ax.legend(loc="best", fontsize=8)
+
+    fig.suptitle(f"Per-artist embedding maps ({ENCODER}, {method}) -- "
+                 "shared projection, illustration only", y=0.995)
+    fig.tight_layout()
+    out = FIGURES_DIR / "embedding_map_per_artist.pdf"
     fig.savefig(out)
     print(f"Figure -> {out}")
 
