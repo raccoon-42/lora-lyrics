@@ -1,0 +1,187 @@
+{
+  "encoder": "all-MiniLM-L6-v2",
+  "temp": 0.1,
+  "k": 5,
+  "rows": [
+    {
+      "artist": "Gojira",
+      "variant": "lora_r8",
+      "sim_target": 0.7398988604545593,
+      "pseudo_prob": 0.3867558240890503,
+      "knn_purity": 0.72,
+      "max_sim_any": 0.7398988604545593,
+      "argmax": "Gojira"
+    },
+    {
+      "artist": "Gojira",
+      "variant": "lora_r8_sw",
+      "sim_target": 0.6588284969329834,
+      "pseudo_prob": 0.3248876631259918,
+      "knn_purity": 0.6,
+      "max_sim_any": 0.6672776341438293,
+      "argmax": "Gojira"
+    },
+    {
+      "artist": "Gojira",
+      "variant": "zero_shot",
+      "sim_target": 0.27947309613227844,
+      "pseudo_prob": 0.19820424914360046,
+      "knn_purity": 0.12000000000000002,
+      "max_sim_any": 0.3269977867603302,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Gojira",
+      "variant": "few_shot",
+      "sim_target": 0.4452856183052063,
+      "pseudo_prob": 0.21313925087451935,
+      "knn_purity": 0.42000000000000004,
+      "max_sim_any": 0.4855038523674011,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Tool",
+      "variant": "lora_r8",
+      "sim_target": 0.6029437780380249,
+      "pseudo_prob": 0.3481457531452179,
+      "knn_purity": 0.32,
+      "max_sim_any": 0.6098819375038147,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Tool",
+      "variant": "lora_r8_sw",
+      "sim_target": 0.558250367641449,
+      "pseudo_prob": 0.4315645694732666,
+      "knn_purity": 0.38,
+      "max_sim_any": 0.5625725388526917,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Tool",
+      "variant": "zero_shot",
+      "sim_target": 0.3584648668766022,
+      "pseudo_prob": 0.3094383478164673,
+      "knn_purity": 0.30000000000000004,
+      "max_sim_any": 0.3632374405860901,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Tool",
+      "variant": "few_shot",
+      "sim_target": 0.5157254934310913,
+      "pseudo_prob": 0.33428850769996643,
+      "knn_purity": 0.30000000000000004,
+      "max_sim_any": 0.5157254934310913,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Death",
+      "variant": "lora_r8",
+      "sim_target": 0.6789498925209045,
+      "pseudo_prob": 0.32394939661026,
+      "knn_purity": 0.52,
+      "max_sim_any": 0.6973234415054321,
+      "argmax": "Death"
+    },
+    {
+      "artist": "Death",
+      "variant": "lora_r8_sw",
+      "sim_target": 0.6411342620849609,
+      "pseudo_prob": 0.4011402130126953,
+      "knn_purity": 0.64,
+      "max_sim_any": 0.6435238718986511,
+      "argmax": "Death"
+    },
+    {
+      "artist": "Death",
+      "variant": "zero_shot",
+      "sim_target": 0.31346771121025085,
+      "pseudo_prob": 0.21935436129570007,
+      "knn_purity": 0.18000000000000002,
+      "max_sim_any": 0.3532879650592804,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Death",
+      "variant": "few_shot",
+      "sim_target": 0.4521518349647522,
+      "pseudo_prob": 0.1726236194372177,
+      "knn_purity": 0.2,
+      "max_sim_any": 0.5147754549980164,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Mastodon",
+      "variant": "lora_r8",
+      "sim_target": 0.6884968280792236,
+      "pseudo_prob": 0.2908889353275299,
+      "knn_purity": 0.4600000000000001,
+      "max_sim_any": 0.6989490985870361,
+      "argmax": "Mastodon"
+    },
+    {
+      "artist": "Mastodon",
+      "variant": "lora_r8_sw",
+      "sim_target": 0.6258749961853027,
+      "pseudo_prob": 0.305844247341156,
+      "knn_purity": 0.58,
+      "max_sim_any": 0.6385601162910461,
+      "argmax": "Mastodon"
+    },
+    {
+      "artist": "Mastodon",
+      "variant": "zero_shot",
+      "sim_target": 0.2591308653354645,
+      "pseudo_prob": 0.2030075490474701,
+      "knn_purity": 0.27999999999999997,
+      "max_sim_any": 0.2886159420013428,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Mastodon",
+      "variant": "few_shot",
+      "sim_target": 0.39530375599861145,
+      "pseudo_prob": 0.22827573120594025,
+      "knn_purity": 0.44000000000000006,
+      "max_sim_any": 0.43015986680984497,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Opeth",
+      "variant": "lora_r8",
+      "sim_target": 0.7205661535263062,
+      "pseudo_prob": 0.36472874879837036,
+      "knn_purity": 0.8,
+      "max_sim_any": 0.7223323583602905,
+      "argmax": "Opeth"
+    },
+    {
+      "artist": "Opeth",
+      "variant": "lora_r8_sw",
+      "sim_target": 0.6741840839385986,
+      "pseudo_prob": 0.47340089082717896,
+      "knn_purity": 0.9199999999999999,
+      "max_sim_any": 0.6741840839385986,
+      "argmax": "Opeth"
+    },
+    {
+      "artist": "Opeth",
+      "variant": "zero_shot",
+      "sim_target": 0.2739315927028656,
+      "pseudo_prob": 0.17453768849372864,
+      "knn_purity": 0.2,
+      "max_sim_any": 0.3372058868408203,
+      "argmax": "Tool"
+    },
+    {
+      "artist": "Opeth",
+      "variant": "few_shot",
+      "sim_target": 0.3838322162628174,
+      "pseudo_prob": 0.16623541712760925,
+      "knn_purity": 0.16,
+      "max_sim_any": 0.45120254158973694,
+      "argmax": "Tool"
+    }
+  ]
+}

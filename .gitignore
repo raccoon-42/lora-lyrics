@@ -15,3 +15,7 @@ GEMINI.md
 
 # Weight artifacts (too large for git)
 src/artifacts/
+
+# Apple junks
+._*
+.DS_STORE
