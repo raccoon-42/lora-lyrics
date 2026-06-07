@@ -20,6 +20,7 @@ Pass --force to ignore all caches and recompute everything, or one of
 """
 import json
 import random
+from pathlib import Path
 
 import pandas as pd
 import torch
@@ -127,6 +128,9 @@ def run_baselines_it(clf, force=False):
     # B3/B4 -- instruction-tuned baselines. Loads the -it model itself (the base
     # model used for B1/B2/adapters can't follow instructions), runs zero-/few-shot
     # with proper chat-formatted prompts, then frees it before adapters/blends.
+    if not Path(MODEL_PATH_IT).exists():
+        print(f"[skip] -it model not found at {MODEL_PATH_IT} -- run download_it.py for B3/B4")
+        return
     model, tokenizer = load_base_model(MODEL_PATH_IT)
 
     # The chat template already emits BOS -> tell the tokenizer not to add a second
