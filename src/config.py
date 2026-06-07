@@ -66,8 +66,9 @@ def adapter_registry():
     """Canonical list of adapters the project trains -- single source of truth for
     05_train_adapters (the plan), 06_evaluation, and 08_perplexity.
 
-    Main set: LoRA + DoRA r=8 for every artist. Plus Gojira-only ablation extras
-    (rank sweep + style-weighted)."""
+    Main set: LoRA + DoRA r=8 for every artist. Plus ablation extras: rank sweep
+    on Gojira/Tool/Mastodon (picked by hypothesis: Gojira reference, Tool =
+    under-committed/headroom, Mastodon = largest dataset) + style-weighted."""
     specs = []
     for artist in ARTISTS:
         specs.append(Adapter(artist, "lora", 8))
@@ -75,6 +76,10 @@ def adapter_registry():
     specs += [
         Adapter("Gojira", "lora", 4),
         Adapter("Gojira", "lora", 16),
+        Adapter("Tool", "lora", 4),
+        Adapter("Tool", "lora", 16),
+        Adapter("Mastodon", "lora", 4),
+        Adapter("Mastodon", "lora", 16),
         Adapter("Gojira", "lora", 8, sw=True),
         Adapter("Tool", "lora", 8, sw=True),
         Adapter("Death", "lora", 8, sw=True),
