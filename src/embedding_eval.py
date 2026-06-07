@@ -37,6 +37,15 @@ K = 5        # kNN neighbours among real lyrics
 ADAPTER_VARIANTS = ["lora_r8", "lora_r8_sw"]
 BASELINE_METHODS = ["zero_shot", "few_shot", "zero_shot_it", "few_shot_it"]
 
+# Marker per baseline method: all gray (baselines are never artist-colored),
+# distinguished by marker shape -- base = line markers (x/+), -it = filled (v/D).
+BASELINE_STYLE = {
+    "zero_shot":    dict(marker="x", color="gray"),
+    "few_shot":     dict(marker="+", color="gray"),
+    "zero_shot_it": dict(marker="v", color="dimgray", edgecolors="black", linewidths=0.4),
+    "few_shot_it":  dict(marker="D", color="dimgray", edgecolors="black", linewidths=0.4),
+}
+
 
 def _slug(artist):
     return artist.lower().replace(" ", "_")
@@ -158,10 +167,11 @@ def plot_map(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method):
             seen.add(tag)
             ax.scatter(*pts.T, color=colors[artist], marker=marker, s=48,
                        edgecolors="black", linewidths=0.5, label=label, zorder=4)
-        else:  # baselines: gray, not artist-colored -- they're junk regardless of target
-            label = "baseline" if "baseline" not in seen else None
-            seen.add("baseline")
-            ax.scatter(*pts.T, color="gray", marker="x", s=36, alpha=0.7, label=label, zorder=3)
+        else:  # baselines: not artist-colored -- attribution is target-independent for them
+            label = variant if variant not in seen else None
+            seen.add(variant)
+            ax.scatter(*pts.T, s=36, alpha=0.7, label=label, zorder=3,
+                       **BASELINE_STYLE[variant])
 
     ax.set_title(f"Lyrics in sentence-embedding space ({ENCODER}, {method})\n"
                  "2D projection for illustration only -- metrics computed in full dims")
@@ -213,10 +223,8 @@ def plot_per_artist(real_xy, real_artists, cent_xy, gen_xy, gen_sets, method):
             continue
         label = variant if variant not in seen else None
         seen.add(variant)
-        marker = "x" if variant.startswith("zero") else "+"
-        color = "dimgray" if variant.endswith("_it") else "gray"
-        ax.scatter(*gen_xy[sl].T, color=color, marker=marker, s=42, alpha=0.8,
-                   label=label, zorder=3)
+        ax.scatter(*gen_xy[sl].T, s=42, alpha=0.8, label=label, zorder=3,
+                   **BASELINE_STYLE[variant])
     ax.set_title("baselines (all targets)")
     ax.set_xticks([]); ax.set_yticks([])
     ax.legend(loc="best", fontsize=8)
