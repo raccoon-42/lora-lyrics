@@ -63,7 +63,7 @@ def main(epochs, out=None):
     best_dir = f"{output_dir}/best_model"
     trainer.save_model(best_dir)
     tokenizer.save_pretrained(best_dir)
-    print(f"Best model (epoch {trainer.state.best_model_checkpoint}) -> {best_dir}")
+    print(f"Best model ({trainer.state.best_model_checkpoint}) -> {best_dir}")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
     ax1.plot(tr["epoch"], tr["loss"], label="train loss", alpha=0.7)
