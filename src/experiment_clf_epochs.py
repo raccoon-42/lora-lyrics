@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from transformers import AutoTokenizer, set_seed
 
 from classifier.data import LyricsDataset
+from classifier.report import save_clf_report
 from classifier.train import train_classifier
 
 SEED = 42
@@ -47,6 +48,13 @@ def main(epochs):
     print(ev.to_string(index=False))
     best = ev.loc[ev["eval_accuracy"].idxmax()]
     print(f"\nBest epoch: {best['epoch']:.0f}  acc={best['eval_accuracy']:.3f}  eval_loss={best['eval_loss']:.3f}")
+
+    # load_best_model_at_end=True -> predict() runs the best epoch's model
+    out = trainer.predict(eval_dataset)
+    preds = out.predictions.argmax(-1)
+    names = sorted(label2id, key=label2id.get)
+    for path in save_clf_report(out.label_ids, preds, names, output_dir):
+        print(f"Saved -> {path}")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
     ax1.plot(tr["epoch"], tr["loss"], label="train loss", alpha=0.7)
