@@ -50,3 +50,51 @@ def item_set_configs():
             f"blend_{_slug(BLEND_ANCHOR)}_{_slug(partner)}", "blend", "blend",
             (BLEND_ANCHOR, partner), RESULTS_DIR / "blends" / pair / f"{BLEND_ALPHA}.json"))
     return cfgs
+
+
+# Which rubric criteria each item_type is scored on (mirrors rubric.yaml
+# applies_to). "presence" is expanded per target artist by the runner.
+CRITERIA_BY_TYPE = {
+    "single": ["style_match", "coherence"],
+    "blend": ["presence", "coherence"],
+}
+
+ITEMS_PATH = RESULTS_DIR / "judge" / "items.jsonl"
+
+
+def standardized_items():
+    """Yield the 140 standardized items: {id, text, metadata}.
+
+    All 10 cached samples per config are used (10/config is the locked set, so
+    no subsampling), with IDs pinned by index for reproducibility across judges
+    and any future human rater. metadata carries everything the runner needs to
+    dispatch criteria and fill rubric placeholders.
+    """
+    for cfg in item_set_configs():
+        criteria = CRITERIA_BY_TYPE[cfg.item_type]
+        for i, text in enumerate(cfg.samples()):
+            yield {
+                "id": f"{cfg.config_id}__{i:02d}",
+                "text": text,
+                "metadata": {
+                    "config_id": cfg.config_id,
+                    "kind": cfg.kind,
+                    "item_type": cfg.item_type,
+                    "targets": list(cfg.targets),
+                    "criteria": criteria,
+                },
+            }
+
+
+def export_items(path=ITEMS_PATH):
+    items = list(standardized_items())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        for it in items:
+            f.write(json.dumps(it, ensure_ascii=False) + "\n")
+    return path, len(items)
+
+
+if __name__ == "__main__":
+    path, n = export_items()
+    print(f"wrote {n} items -> {path}")

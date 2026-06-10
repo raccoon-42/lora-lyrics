@@ -1,0 +1,66 @@
+# LLM-judge rubric (export seam, file 1 of 3: rubric + item JSONL + adapter).
+#
+# Reference-free Likert 1-5. The anchor text IS the standard (no gold sample),
+# so endpoints are written explicitly; 2-4 interpolate. Criteria are conditional
+# on item_type (from items.py ItemConfig): "single" -> style_match + coherence;
+# "blend" -> presence (scored once per target artist) + coherence.
+#
+# Placeholders the runner fills per item:
+#   {artist}    single-artist target
+#   {artist_x}  the artist being scored in a presence judgment
+#   {artist_y}  the other blended artist (context only, not scored in this call)
+
+scale:
+  min: 1
+  max: 5
+  type: likert
+  note: >
+    Integer 1-5. Endpoints anchored below; intermediate points interpolate.
+    Score each criterion independently. Do not average across criteria.
+
+criteria:
+  style_match:
+    applies_to: [single]
+    definition: >
+      How strongly does this read as the work of {artist}, in any recognizable
+      era of their catalog?
+    cues: [lexicon, themes_and_imagery, phrasing_and_structure]
+    anchors:
+      "1": >
+        No recognizable connection to {artist}. Lexicon, imagery, and phrasing
+        give no cue that would let a familiar listener associate it with this
+        artist over any other.
+      "5": >
+        Unmistakably {artist}. Word choice, recurring themes/imagery, and
+        phrasing or structure all carry cues a familiar listener would attribute
+        to this artist, consistent with at least one era of their catalog.
+
+  presence:
+    applies_to: [blend]
+    scored_per: target            # one score per blended artist (presence-A, presence-B)
+    basis: detectability          # NOT dominance: both artists can score 5 in a 50/50 blend
+    definition: >
+      How clearly detectable is {artist_x}'s style in this text, regardless of
+      how much of {artist_y} is also present?
+    anchors:
+      "1": >
+        No detectable trace of {artist_x}; nothing in the text points to this
+        artist.
+      "5": >
+        {artist_x} is clearly and confidently detectable in the text.
+
+  coherence:
+    applies_to: [single, blend]
+    note: calibration channel (artist-agnostic; the one dimension a human rater can later check the judges against)
+    definition: >
+      Does the text hold together as a piece of writing, independent of which
+      artist it imitates?
+    anchors:
+      "1": >
+        Incoherent: broken grammar or non-sequitur lines with no thread holding
+        them together. Deliberate abstraction or fragmentation is NOT
+        incoherence -- if disjoint imagery still sustains a mood or theme, score
+        it higher.
+      "5": >
+        Fully coherent: grammatical, lines connect into a consistent thread or
+        mood, reads as a single deliberate piece.
