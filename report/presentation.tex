@@ -14,10 +14,12 @@
 \definecolor{accent}{RGB}{120,190,255}   % light blue accent (readable on black)
 \definecolor{lo}{RGB}{255,95,95}         % low score (red)
 \definecolor{hi}{RGB}{120,230,120}       % high score (green)
+\definecolor{junk}{RGB}{160,160,160}     % muted grey for junk text
 
 \usetheme{default}
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}{}            % no footer bar
+\setbeamertemplate{footline}{%            % minimal page number, bottom-right
+  \hfill{\color{accent}\scriptsize\insertframenumber}\hspace{8pt}\vskip4pt}
 \setbeamertemplate{headline}{}            % no header bar
 
 \setbeamercolor{background canvas}{bg=black}
@@ -41,6 +43,8 @@
 \graphicspath{{figures/}}
 
 \newcommand{\take}[1]{\vskip3pt\footnotesize\textcolor{accent}{#1}}
+\newcommand{\lt}{\textless}
+\newcommand{\gt}{\textgreater}
 
 \title[Artist-Conditional Lyrics]{Artist-Conditional Lyric Generation\\with QLoRA Adapter Blending}
 \subtitle{CENG 467 --- Natural Language Understanding \& Generation}
@@ -55,8 +59,12 @@
   \titlepage
 \end{frame}
 
-% ---------- 2. Task & data ----------
-\begin{frame}{Task: five same-genre metal artists}
+% ====================================================================
+% ACT 0 -- SETUP
+% ====================================================================
+
+% ---------- 2. Dataset ----------
+\begin{frame}{The data: five same-genre metal artists}
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       \footnotesize
@@ -71,7 +79,7 @@
         Tool     & 74  & cryptic / progressive \\
         \bottomrule
       \end{tabular}
-      \take{Same genre on purpose: learn \emph{artist}, not genre.}
+      \take{Same genre on purpose: the model must learn \emph{artist}, not genre. \\ Note the imbalance --- it matters later.}
     \end{column}
     \begin{column}{0.48\textwidth}
       \centering
@@ -80,8 +88,39 @@
   \end{columns}
 \end{frame}
 
-% ---------- 3. Method ----------
-\begin{frame}{Method}
+% ====================================================================
+% ACT 1 -- TWO BASELINES, TWO FAILURES
+% ====================================================================
+
+% ---------- 3. Baseline 1: base model -> junk ----------
+\begin{frame}{Baseline 1 --- the pretrained base model: junk}
+  \scriptsize\ttfamily\color{junk}\raggedright
+  [User 0001]\ \ This is my band/artist page where you enter your range of audio, video --- preset unavailable for your region. To read lyrics from web, click back in your browser\ldots\par\vskip4pt
+  [User 0001]\ \ [ame=http://youtube.com/\ldots]YouTube - Gero booyy[/video][/ame] \ldots you are wanting to post a video, hide it from devices. {\lt}b{\gt}Song Title{\lt}/b{\gt}\ \ 0 replies\ \ Added Friday, July 24, 2013\par\vskip4pt
+  [User 0001]\ \ {\lt}b{\gt}GOJIRA!{\lt}/b{\gt}\ \ [User 0002]\ I'll be going down to the woods today\ \ Nooooooooo!!!!!\ \ [User 0003]\ In every dark place that this Gojira go..\par
+  \normalfont\color{white}
+  \take{The base model is a \emph{text predictor}, not a lyricist: it continues scraped forum/HTML noise. No prompt fixes this.}
+\end{frame}
+
+% ---------- 4. Baseline 2: instruct model -> fluent but collapsed ----------
+\begin{frame}{Baseline 2 --- the instruct model: fluent, but one voice}
+  \scriptsize\itshape\raggedright
+  \textbf{\upshape Gojira:}\ \ \textbf{Beneath the obsidian} shroud, where silence breeds its dread reign\par
+  \textbf{\upshape Mastodon:}\ \ \textbf{Beneath the obsidian} canopy, where fungal tides now creep and churn\par
+  \textbf{\upshape Opeth:}\ \ \textbf{Beneath the} glacial shroud, a silence reigns supreme\par
+  \textbf{\upshape Death:}\ \ Visceral rot descends on brittle bone\par
+  \textbf{\upshape Tool:}\ \ The aperture narrows on a familiar hum\par
+  \upshape\vskip4pt
+  \footnotesize
+  \begin{itemize}
+    \item \textbf{Intra-artist:} all 10 Gojira samples open ``Beneath the obsidian/basalt shroud'' --- near-zero variance.
+    \item \textbf{Inter-artist:} Gojira $\approx$ Mastodon $\approx$ Opeth all write ``Beneath the obsidian canopy.''
+  \end{itemize}
+  \take{Two baselines, two failures: base = incoherent junk; instruct = coherent but \emph{the same poem for every band}. Fluency is not style.}
+\end{frame}
+
+% ---------- 5. So we fine-tuned: method ----------
+\begin{frame}{So we fine-tune: one QLoRA adapter per artist}
   \begin{itemize}
     \item Base: \textbf{Gemma~3n~E4B} ($\sim$4B), QLoRA 4-bit NF4
     \item One \textbf{LoRA r8} adapter per artist (all linear layers)
@@ -92,58 +131,49 @@
     A_{\text{blend}}=\begin{bmatrix}\alpha A_{1}\\[2pt](1-\alpha)A_{2}\end{bmatrix},\qquad
     B_{\text{blend}}=\begin{bmatrix}B_{1}&B_{2}\end{bmatrix}
   \]
-  \take{$\alpha$ = weight of artist 1; endpoints recover the pure adapters exactly.}
+  \take{$\alpha$ = weight of artist 1; endpoints recover the pure adapters exactly. Now: did it actually learn the artist?}
 \end{frame}
 
-% ---------- 4. Base model fails -> PEFT ----------
-\begin{frame}{Why fine-tune? The base model can't be prompted}
-  \begin{columns}[T]
-    \begin{column}{0.5\textwidth}
-      \centering\textbf{Base, zero-shot}\par\vskip3pt
-      \scriptsize\ttfamily\raggedright
-      [User 0001]\\
-      This is my band/artist page is where you should enter your range of audio, video, preset unavailable for your region\ldots{} to read lyrics from web. If you followed any links on this page\ldots
-    \end{column}
-    \begin{column}{0.5\textwidth}
-      \centering\textbf{Gojira adapter}\par\vskip3pt
-      \scriptsize\itshape\raggedright
-      I took a boat across the ocean\\
-      And I sail away, sailing home\\
-      On an open sea that is so deep\\
-      I'm falling into my dreams
-    \end{column}
-  \end{columns}
-  \take{Base $\rightarrow$ web/HTML junk. \quad Adapter $\rightarrow$ clean artist lyrics.}
-\end{frame}
+% ====================================================================
+% ACT 2 -- EVALUATION MACHINERY
+% ====================================================================
 
-% ---------- 5. The judge ----------
-\begin{frame}{The judge: an attribution classifier}
+% ---------- 6. The judge ----------
+\begin{frame}{Evaluation is hard: generated lyrics have no label}
   \begin{columns}[c]
     \begin{column}{0.55\textwidth}
       \centering
-      \includegraphics[height=0.66\textheight]{confusion_matrix.pdf}
+      \includegraphics[height=0.62\textheight]{confusion_matrix.pdf}
     \end{column}
     \begin{column}{0.45\textwidth}
       \footnotesize
       \begin{itemize}
-        \item RoBERTa-base, accuracy \textbf{0.873}
+        \item No gold reference for a generated line $\Rightarrow$ train a \textbf{judge}
+        \item RoBERTa-base 5-way attribution classifier, accuracy \textbf{0.873}
         \item Strong in-domain (Death f1 1.00)
-        \item No ``other'' class $\Rightarrow$ out-of-distribution input \\ is forced onto a \textbf{sink} class
+        \item But it is \emph{one} automatic judge --- a \textbf{sanity check, not ground truth} (we'll see it can be gamed)
       \end{itemize}
-      \take{Attribution is a \emph{sanity check}, valid only on real lyric input.}
+      \take{If a generation is attributed to its target artist with no artist name in the prompt, the style is in the \emph{text} --- as long as we don't over-trust a single number.}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ---------- 6. Attribution results ----------
-\begin{frame}{Adapters encode style; baselines collapse to sinks}
+% ---------- 7. Adapters attribute; baselines sink (+ correction 2) ----------
+\begin{frame}{Adapters attribute; baselines collapse to a sink}
+  \centering
+  \includegraphics[width=0.98\linewidth]{method_comparison.pdf}
+  \vskip6pt
   \begin{columns}[T]
-    \begin{column}{0.58\textwidth}
-      \centering
-      \includegraphics[width=\linewidth]{method_comparison.pdf}
-    \end{column}
-    \begin{column}{0.42\textwidth}
+    \begin{column}{0.56\textwidth}
       \footnotesize
+      \begin{itemize}
+        \item \textbf{No ``other'' class:} any out-of-distribution text is forced onto the \emph{nearest} real artist.
+        \item \textbf{Not class imbalance:} the majority class is Mastodon (154), yet base $\rightarrow$ \textbf{Tool}, instruct $\rightarrow$ \textbf{Opeth} --- different sinks, neither the majority.
+      \end{itemize}
+      \take{The sink is a \emph{measurement artifact}, not a class prior. Broadly, the judge still points the right way: adapters land on-target.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering\footnotesize
       \begin{tabular}{@{}lr@{}}
         \multicolumn{2}{c}{\textbf{Plain LoRA r8}}\\
         \toprule
@@ -159,12 +189,11 @@
         instruct $\rightarrow$ Opeth & $\approx$0.99 \\
         \bottomrule
       \end{tabular}
-      \take{Adapters attribute with no artist name in the prompt; both baseline families collapse to a sink class.}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ---------- 7. Ablation: rank ----------
+% ---------- 8. Ablation: rank ----------
 \begin{frame}{Ablation: LoRA rank}
   \begin{columns}[c]
     \begin{column}{0.55\textwidth}
@@ -187,8 +216,72 @@
   \end{columns}
 \end{frame}
 
-% ---------- 8. CLIMAX: gameable judge ----------
-\begin{frame}{Style-weighted loss exposes the judge}
+% ---------- 9. Adapter lyrics showcase (flash & skip) ----------
+\begin{frame}{What the adapters actually write}
+  \scriptsize
+  \begin{columns}[T]
+    \begin{column}{0.33\textwidth}
+      \textbf{Gojira}\par\itshape
+      I took a boat across the ocean\\
+      And I sail away, sailing home\\
+      On an open sea that is so deep
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \textbf{Death}\par\itshape
+      In the dark of night\\
+      The dead come forth from their graves\\
+      A bloody ritual is being performed
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \textbf{Opeth}\par\itshape
+      I had a dream I was in the fall\\
+      That everything would die away\\
+      And when winter comes there is no more
+    \end{column}
+  \end{columns}
+  \vskip8pt
+  \begin{columns}[T]
+    \begin{column}{0.33\textwidth}
+      \textbf{Mastodon}\par\itshape
+      The storm is coming down\\
+      And sweeping through the trees\\
+      Cleansing spirit, dispelling dreams
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \textbf{Tool}\par\itshape
+      My mind's on a different frequency\\
+      So I might not see eye to eye with you\\
+      I hear voices calling me away
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \upshape\footnotesize\textcolor{accent}{Coherent, on-theme, no artist name in the prompt. So is the judge enough?}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ====================================================================
+% ACT 3 -- ONE NUMBER IS NOT ENOUGH
+% ====================================================================
+
+% ---------- 10. The metrics + their limits ----------
+\begin{frame}{Beyond the judge: lexical metrics (and their limits)}
+  \footnotesize
+  \begin{itemize}
+    \item \textbf{Types / sample} --- distinct artist-marker tokens used $\Rightarrow$ lexical \emph{breadth}.
+    \item \textbf{Occurrences / sample} --- total marker hits $\Rightarrow$ inflated by \emph{repetition}.
+    \item \textbf{distinct-2} --- fraction of unique bigrams $\Rightarrow$ global \emph{degeneration} (looping).
+  \end{itemize}
+  \vskip4pt
+  {\color{accent}Limitations --- no metric is neutral:}
+  \begin{itemize}\footnotesize
+    \item Token-level TF-IDF favors \textbf{concrete-noun} artists (Gojira: boat/star/forest) over \textbf{register/phrasal} (Tool) and \textbf{long-word} (Death, split by BPE into unreadable fragments).
+    \item Occurrences \emph{reward} a model that loops one marker; the judge can be gamed the same way.
+  \end{itemize}
+  \take{So we read all of them together --- and they don't agree.}
+\end{frame}
+
+% ---------- 11. CLIMAX: how the judge scores them ----------
+\begin{frame}{How the judge scores them: higher score, worse lyrics}
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \centering\textbf{Plain Tool} --- score \textcolor{lo}{0.003}\par\vskip2pt
@@ -199,7 +292,7 @@
       But I can write a rhyme
     \end{column}
     \begin{column}{0.5\textwidth}
-      \centering\textbf{SW Tool} --- score \textcolor{hi}{0.996}\par\vskip2pt
+      \centering\textbf{Style-weighted Tool} --- score \textcolor{hi}{0.996}\par\vskip2pt
       \scriptsize\itshape\raggedright
       Yeah, yeah\\
       Yeah, hey, hey\\
@@ -218,10 +311,10 @@
     Occ./type     & 1.2 $\rightarrow$ 2.1 & 1.2 $\rightarrow$ \textbf{8.6} \\
     \bottomrule
   \end{tabular}
-  \take{Higher score, worse lyrics: Tool's gain is pure repetition, not breadth.}
+  \take{A degenerate ``hey'' loop \emph{beats} a coherent verse. Tool's gain is pure repetition (types flat), not breadth.}
 \end{frame}
 
-% ---------- 9. Three independent axes (all 5 artists) ----------
+% ---------- 12. Three independent axes (all 5 artists) ----------
 \begin{frame}{Four metrics, five artists --- they disagree}
   \centering\small
   \begin{tabular}{@{}lcccc@{}}
@@ -236,43 +329,231 @@
     Opeth    & .90 $\rightarrow$ .85 & 0.7 $\rightarrow$ 2.8 & 0.7 $\rightarrow$ 7.1 & .92 $\rightarrow$ .71 \\
     \bottomrule
   \end{tabular}
-  \take{Distinctive-token \emph{breadth} (types) rises for Gojira/Opeth/Mastodon but not Tool/Death; \emph{occurrences} inflate everywhere (repetition); distinct-2 falls for all (degeneration); attribution moves both ways. No single number captures style.}
+  \take{Breadth (types) rises for Gojira/Opeth/Mastodon but not Tool/Death; occurrences inflate everywhere; distinct-2 falls for all; attribution moves both ways. No single number captures style.}
 \end{frame}
 
-% ---------- 10. Blending crossover ----------
+% ====================================================================
+% ACT 4 -- BLENDING + CLOSE
+% ====================================================================
+
+% ---------- 13. Blending crossover ----------
 \begin{frame}{Blending: 50/50 weights $\neq$ 50/50 style}
   \centering
-  \includegraphics[height=0.66\textheight]{blend_sw_gojira_tool.pdf}
+  \includegraphics[height=0.64\textheight]{blend_sw_gojira_tool.pdf}
   \take{Crossover moves from $\alpha$=0.17 (plain) to 0.61 (SW): the loss flips which artist dominates the blend.}
 \end{frame}
 
-% ---------- 11. Blend sample (qualitative) ----------
-\begin{frame}{A blend, generated: 50/50 Gojira + Death}
-  \centering\footnotesize\itshape
-  Enter the land of darkness\\
-  An ancient race now destroyed\\
-  Lost in time and space forever\\
-  Never to return\\[3pt]
-  In the sky so clear you can see\\
-  The flames burning bright below\\
-  A giant dragon is breathing fire\\
-  It grows ever stronger with each blow\\[3pt]
-  Feel the heat flowing through your veins\\
-  Fire at will, breathe and destroy\\
-  Dragon is approaching fast\\
-  Breath comes out as red hot steel\\
-  Leave a trail of death behind you\\
-  \upshape\normalsize
-  \take{$\alpha$=0.5 Gojira-SW $\times$ Death-SW. The interpolated style reads as a \emph{third} artist --- Mastodon 0.79 (Gojira 0.12, Death 0.09).}
+% ---------- 14a. Single Gojira (pure) ----------
+\begin{frame}{Pure Gojira ($\alpha$=1.0) --- \textcolor{accent}{Gojira 1.00}}
+  \scriptsize\itshape\raggedright
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      No sense pretending to be innocent\\
+      Don't even try, no reason now\\
+      Kill this beast you call ``reason''\\
+      Break the rules and break away the law\\[4pt]
+      There is a vision coming alive in my mind\\
+      Like bright fireflies flying free\\
+      Awakening from the sleep I lay awake on the rock\\
+      I understand it all\\[4pt]
+      Create your own reality!\\
+      You create yourself to become what you want to be\\
+      And fight for better\\
+      All alone against all of them
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      Enter your own realm --- open the door\\
+      Leave all illusions behind --- step inside\\
+      Set a course straight --- go along until the end\\
+      Open your eyes embrace!\\[4pt]
+      Enter your own realm --- open the door!\\
+      Enter your own realm! ! !\\[4pt]
+      This force that runs through you creates the world\\
+      From matter and energy made --- structures fall apart!\\
+      This force is running through me too --- create another\\
+      Create --- create --- create --- another dimension!
+    \end{column}
+  \end{columns}
+  \upshape\take{The anchor: coherent, cosmic/creation imagery (realm / force / matter and energy / dimension). Scored Gojira 1.00.}
 \end{frame}
 
-% ---------- 12. Cross-check + thesis ----------
-\begin{frame}{Independent instrument, same verdict}
-  \centering
-  \includegraphics[height=0.66\textheight]{embedding_map_per_artist_tsne.pdf}
-  \take{Adapters land on each artist's real-song cluster; base and instruct baselines sit in two separate out-of-distribution islands. Three axes disagree (judge / breadth / repetition); faithful reproduction of an offensive source is a deployment risk.}
-  \vskip2pt
-  {\large\bfseries\textcolor{accent}{Style is not one number.}}
+% ---------- 14b. Gojira + Tool ----------
+\begin{frame}{Gojira + Tool ($\alpha$=0.5) --- \textcolor{accent}{Tool 0.99}}
+  \scriptsize\itshape\raggedright
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      I will rise and overcome\\
+      Leave this cage for better\\[4pt]
+      Fight back, fight back\\
+      Don't you know I am alive?\\
+      Fight back, fight back\\
+      Don't you know I am alive?\\[4pt]
+      Rise above the walls of hatred\\
+      Learn to feel compassion\\
+      Break the chains that bind us\\
+      And understand why we must fight\\[4pt]
+      Feel our wrath on your skin\\
+      Feel our wrath on your skin\\
+      Feel our wrath on your skin\\
+      Feel our wrath on your skin
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\[4pt]
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?\\
+      Don't you know I am alive?
+    \end{column}
+  \end{columns}
+  \upshape\take{Partner takes over: scored Tool 0.99 --- but the verse collapses into a 12$\times$ loop. High score, degenerate text.}
+\end{frame}
+
+% ---------- 14c. Gojira + Mastodon ----------
+\begin{frame}{Gojira + Mastodon ($\alpha$=0.5) --- \textcolor{accent}{Tool 0.58 (a third artist)}}
+  \scriptsize\itshape\raggedright
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      I wonder if I'll ever learn to fly\\
+      If it is right there in the sky\\
+      If all the stars align and shine so bright\\
+      Can you see them, baby? Can you count them?\\[4pt]
+      And you said, ``It's good for your health''\\
+      Good for your health\\
+      Oh yeah, yeah, yeah\\
+      Yeah, yeah, yeah\\[4pt]
+      Get high, get high, get high\\
+      Fly free, fly free, fly free\\
+      Get high, get high, get high\\
+      Fly free, fly free, fly free\\
+      High above this beautiful world\\
+      I can fly\\
+      Fly through these open skies
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      In the night, the moon shines brightly on me\\
+      I can feel her warmth come down to earth\\
+      Bright eyes and teeth and golden skin\\
+      She belongs to Mother Nature, the Earth\\
+      Don't be afraid of falling down\\
+      We all crawl from mud and bone\\
+      Stand up tall and straight\\
+      And ride that wave of life\\[4pt]
+      Get high, get high, get high\\
+      Fly free, fly free, fly free\\
+      Get high, get high, get high\\
+      Fly free, fly free, fly free\\
+      Get high, get high, get high\\
+      Fly free, fly free, fly free
+    \end{column}
+  \end{columns}
+  \upshape\take{Neither parent wins: a Gojira+Mastodon blend reads as \emph{Tool} (0.58). 50/50 weights can land on a third artist entirely.}
+\end{frame}
+
+% ---------- 14d. Gojira + Opeth ----------
+\begin{frame}{Gojira + Opeth ($\alpha$=0.5) --- \textcolor{accent}{Gojira 0.99 (anchor holds)}}
+  \scriptsize\itshape\raggedright
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      There's no escape\\
+      I am trapped in a maze\\
+      My soul is ablaze\\
+      My heart is aching for what it knows\\
+      Lost in space, lost on purpose\\
+      Dream state I enter now\\[4pt]
+      Open the door to another world\\
+      Slip inside and let my spirit fly\\
+      Take my hand and guide me there\\
+      Help me find my way\\
+      Into the night\\
+      Inside you can hear nothing but silence\\
+      And that voice crying out for love\\[4pt]
+      Leave all behind, leave this old shell\\
+      Leave alone, come back soon
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      Give us peace, give us time\\
+      Set us free, release the spell\\
+      Enter your mind\\
+      Outside is wild, dangerous land\\
+      We fight within the walls of our minds\\
+      Stay with me awhile until dawn appears\\
+      You are one of a kind\\
+      Don't ever forget\\
+      Never part again\\
+      This is our destiny, always and forever more\ldots\\
+      Until then we shall meet again in another realm\\
+      Until then we shall meet again in another realm\\[4pt]
+      No matter how long and hard you try\\
+      In vain try to forget what came before\\
+      How could you do this to me?\\
+      I thought you cared, but now I know why
+    \end{column}
+  \end{columns}
+  \upshape\take{Opeth can't displace the anchor: scored Gojira 0.99. Same 50/50 recipe as the others, opposite result.}
+\end{frame}
+
+% ---------- 15. Gojira + Death ----------
+\begin{frame}{Gojira + Death ($\alpha$=0.5) --- \textcolor{accent}{Mastodon 0.79 (a third artist)}}
+  \scriptsize\itshape\raggedright
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      Enter the land of darkness\\
+      An ancient race now destroyed\\
+      Lost in time and space forever\\
+      Never to return\\[4pt]
+      In the sky so clear you can see\\
+      The flames burning bright below\\
+      A giant dragon is breathing fire\\
+      It grows ever stronger with each blow\\[4pt]
+      Feel the heat flowing through your veins\\
+      Fire at will, breathe and destroy\\
+      Dragon is approaching fast\\
+      Breath comes out as red hot steel\\
+      Leave a trail of death behind you
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      Descend from the skies\\
+      You've arrived\\
+      Dragons of doom\\[3pt]
+      Descend from the skies\\
+      You've arrived\\
+      Dragons of doom\\[3pt]
+      Descend from the skies\\
+      You've arrived\\
+      Dragons of doom\\[3pt]
+      Descend from the skies\\
+      You've arrived\\
+      Dragons of doom\quad\upshape\footnotesize($\times$7)
+    \end{column}
+  \end{columns}
+  \upshape\take{Neither parent wins: a Gojira+Death blend reads as \emph{Mastodon} (0.79) --- which has dragon/fantasy concept albums --- then loops ``Dragons of doom'' 7$\times$.}
+\end{frame}
+
+% ---------- 15. Close + thesis ----------
+\begin{frame}{Independent instrument, same verdict --- and the close}
+  \begin{columns}[c]
+    \begin{column}{0.55\textwidth}
+      \centering
+      \includegraphics[height=0.6\textheight]{embedding_map_per_artist_tsne.pdf}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item Adapters land on each artist's real-song cluster; base/instruct sit in OOD islands.
+        \item No single metric captures a ``good'' generation --- judge, breadth, repetition disagree.
+        \item The most trustworthy measure is \textbf{human evaluation}, which one person alone cannot supply at scale.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vskip4pt
+  \centering{\large\bfseries\textcolor{accent}{Style is not one number.}}
 \end{frame}
 
 \end{document}
