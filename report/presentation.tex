@@ -45,18 +45,32 @@
 \newcommand{\take}[1]{\vskip3pt\footnotesize\textcolor{accent}{#1}}
 \newcommand{\lt}{\textless}
 \newcommand{\gt}{\textgreater}
+\newcommand{\metric}[1]{\textsc{#1}}   % small caps = named metric
 
 \title[Artist-Conditional Lyrics]{Artist-Conditional Lyric Generation\\with QLoRA Adapter Blending}
 \subtitle{CENG 467 --- Natural Language Understanding \& Generation}
 \author{Ali \"Ozkaya}
-\institute{IYTE --- Instructor: Prof.\ Aytu\u{g} Onan}
+\institute{\.Izmir Institute of Technology (IZTECH)\\Department of Computer Engineering\\Instructor: Prof.\ Aytu\u{g} Onan}
 \date{Spring 2026}
 
 \begin{document}
 
 % ---------- 1. Title ----------
 \begin{frame}[plain]
-  \titlepage
+  \centering
+  \vfill
+  \includegraphics[height=0.22\textheight]{iyte_logo.pdf}\par
+  \vskip16pt
+  {\usebeamerfont{title}\usebeamercolor[fg]{title}\inserttitle\par}
+  \vskip4pt
+  {\usebeamerfont{subtitle}\usebeamercolor[fg]{subtitle}\insertsubtitle\par}
+  \vskip20pt
+  {\usebeamerfont{author}\usebeamercolor[fg]{author}\insertauthor\par}
+  \vskip12pt
+  {\footnotesize\usebeamercolor[fg]{institute}\insertinstitute\par}
+  \vskip14pt
+  {\usebeamercolor[fg]{date}\insertdate\par}
+  \vfill
 \end{frame}
 
 % ====================================================================
@@ -79,7 +93,7 @@
         Tool     & 74  & cryptic / progressive \\
         \bottomrule
       \end{tabular}
-      \take{Same genre on purpose: the model must learn \emph{artist}, not genre. \\ Note the imbalance --- it matters later.}
+      \take{Same genre on purpose: the model must learn \emph{artist}, not genre.}
     \end{column}
     \begin{column}{0.48\textwidth}
       \centering
@@ -105,22 +119,27 @@
 % ---------- 4. Baseline 2: instruct model -> fluent but collapsed ----------
 \begin{frame}{Baseline 2 --- instruct \texttt{gemma-3n-E4B-it}: fluent, but one voice}
   \scriptsize\itshape\raggedright
-  \textbf{\upshape Gojira:}\ \ \textbf{Beneath the obsidian} shroud, where silence breeds its dread reign\par
-  \textbf{\upshape Mastodon:}\ \ \textbf{Beneath the obsidian} canopy, where fungal tides now creep and churn\par
-  \textbf{\upshape Opeth:}\ \ \textbf{Beneath the} glacial shroud, a silence reigns supreme\par
-  \textbf{\upshape Death:}\ \ Visceral rot descends on brittle bone\par
-  \textbf{\upshape Tool:}\ \ The aperture narrows on a familiar hum\par
+  \textbf{\upshape Gojira:}\ \ \textbf{Beneath the obsidian} shroud, where silence breeds its dread reign\ldots\par
+  \textbf{\upshape Mastodon:}\ \ \textbf{Beneath the obsidian} canopy, where fungal tides now creep and churn\ldots\par
+  \textbf{\upshape Opeth:}\ \ \textbf{Beneath the} glacial shroud, a silence reigns supreme\ldots\par
+  \textbf{\upshape Death:}\ \ Visceral rot descends on brittle bone\ldots\par
+  \textbf{\upshape Tool:}\ \ The aperture narrows on a familiar hum\ldots\par
   \upshape\vskip4pt
   \footnotesize
   \begin{itemize}
     \item \textbf{Intra-artist:} all 10 Gojira samples open ``Beneath the obsidian/basalt shroud'' --- near-zero variance.
     \item \textbf{Inter-artist:} Gojira $\approx$ Mastodon $\approx$ Opeth all write ``Beneath the obsidian canopy.''
+    \item \textcolor{accent}{Two baselines, two failures:}
+      \begin{itemize}
+        \item \textcolor{accent}{base $=$ incoherent junk}
+        \item \textcolor{accent}{instruct $=$ coherent, but \emph{the same poem for every band}}
+      \end{itemize}
+      \textcolor{accent}{\textbf{Fluency is not style.}}
   \end{itemize}
-  \take{Two baselines, two failures: base = incoherent junk; instruct = coherent but \emph{the same poem for every band}. Fluency is not style.}
 \end{frame}
 
 % ---------- 5. So we fine-tuned: method ----------
-\begin{frame}{So we fine-tune: one QLoRA adapter per artist}
+\begin{frame}{Fine-tune the pretrained base: one QLoRA adapter per artist}
   \begin{itemize}
     \item Base: \textbf{Gemma~3n~E4B} ($\sim$4B), QLoRA 4-bit NF4
     \item One \textbf{LoRA r8} adapter per artist (all linear layers)
@@ -148,18 +167,18 @@
     \begin{column}{0.45\textwidth}
       \footnotesize
       \begin{itemize}
-        \item No gold reference for a generated line $\Rightarrow$ train a \textbf{judge}
-        \item RoBERTa-base 5-way attribution classifier, accuracy \textbf{0.873}, macro-F1 \textbf{0.86}
-        \item Strong in-domain (Death f1 1.00)
-        \item But it is \emph{one} automatic judge --- a \textbf{sanity check, not ground truth} (we'll see it can be gamed)
+        \item \textbf{Problem:} no ground-truth label for generated lyrics.
+        \item \textbf{Judge:} RoBERTa-base 5-way attribution classifier (acc \textbf{0.873}, macro-F1 \textbf{0.86}).
+        \item \textbf{Score:} \metric{attribution} = P(target artist) --- high $\Rightarrow$ reads as the artist.
+        \item \textbf{Caveat:} one machine judge --- a \textbf{sanity check, not ground truth} (can be gamed).
       \end{itemize}
-      \take{If a generation is attributed to its target artist with no artist name in the prompt, the style is in the \emph{text} --- as long as we don't over-trust a single number.}
+      \take{No artist name in the prompt, yet attributed to its target $\Rightarrow$ the style is in the \emph{text}.}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ---------- 6b. Adapter variants: DoRA + style-weighted loss ----------
-\begin{frame}{Three comparisons we run}
+\begin{frame}{Three ablations we run}
   \vfill
   \large
   \begin{itemize}\setlength{\itemsep}{16pt}
@@ -180,16 +199,21 @@
       \footnotesize
       \begin{itemize}
         \item \textbf{No ``other'' class:} any out-of-distribution text is forced onto the \emph{nearest} real artist.
-        \item \textbf{Not class imbalance:} the majority class is Mastodon (154), yet base $\rightarrow$ \textbf{Tool}, instruct $\rightarrow$ \textbf{Opeth} --- different sinks, neither the majority.
+        \item \textbf{Not class imbalance:} majority class is Mastodon (154), yet neither sink is the majority:
+          \begin{itemize}
+            \item base $\rightarrow$ \textbf{Tool}
+            \item instruct $\rightarrow$ \textbf{Opeth}
+          \end{itemize}
+          two different sinks.
       \end{itemize}
-      \take{The sink is a \emph{measurement artifact}, not a class prior. Broadly, the judge still points the right way: adapters land on-target.}
+      \take{The sink isn't class imbalance, it's the classifier with no reject option. It only affects out-of-distribution text; adapters still attribute correctly.}
     \end{column}
     \begin{column}{0.44\textwidth}
       \centering\footnotesize
       \begin{tabular}{@{}lr@{}}
         \multicolumn{2}{c}{\textbf{Plain LoRA r8}}\\
         \toprule
-        Target & Attribution \\
+        Target & \metric{attribution} \\
         \midrule
         Gojira   & 0.989 \\
         Death    & 0.903 \\
@@ -223,7 +247,7 @@
         r16 & .929 & .755 & .824 \\
         \bottomrule
       \end{tabular}
-      \take{r16 consistently overfits; r4 matches/beats r8 on attribution but can lose on perplexity --- rank choice depends on the metric.}
+      \take{r16 overfits; r4 matches/beats r8 on \metric{attribution}.}
     \end{column}
   \end{columns}
 \end{frame}
@@ -281,18 +305,19 @@
 % ---------- 10. The metrics + their limits ----------
 \begin{frame}{Beyond the judge: lexical metrics (and their limits)}
   \footnotesize
+  \textbf{marker} = a characteristic token of an artist (top 40 per artist, stopwords dropped).
+  \vskip4pt
   \begin{itemize}
-    \item \textbf{Types / sample} --- distinct artist-marker tokens used $\Rightarrow$ lexical \emph{breadth}.
-    \item \textbf{Occurrences / sample} --- total marker hits $\Rightarrow$ inflated by \emph{repetition}.
-    \item \textbf{distinct-2} --- fraction of unique bigrams $\Rightarrow$ global \emph{degeneration} (looping).
+    \item \metric{types} --- distinct markers $\Rightarrow$ \emph{breadth}
+    \item \metric{occurrences} --- total markers $\Rightarrow$ \emph{repetition}
+    \item \metric{distinct-2} --- unique bigrams $\Rightarrow$ \emph{degeneration} (looping)
   \end{itemize}
   \vskip4pt
   {\color{accent}Limitations --- no metric is neutral:}
   \begin{itemize}\footnotesize
-    \item Token-level TF-IDF favors \textbf{concrete-noun} artists (Gojira: boat/star/forest) over \textbf{register/phrasal} (Tool) and \textbf{long-word} (Death, split by BPE into unreadable fragments).
-    \item Occurrences \emph{reward} a model that loops one marker; the judge can be gamed the same way.
+    \item Token-level TF-IDF favors \textbf{concrete-noun} artists (Gojira: tree/star/forest) over \textbf{conversational} ones (Tool).
+    \item Repetition can be real style (Tool's mantras) --- but \metric{occurrences} and the judge can't tell an artful motif from a degenerate loop.
   \end{itemize}
-  \take{So we read all of them together --- and they don't agree.}
 \end{frame}
 
 % ---------- 11. CLIMAX: how the judge scores them ----------
@@ -325,12 +350,12 @@
     \toprule
     & Gojira (plain$\rightarrow$SW) & Tool (plain$\rightarrow$SW) \\
     \midrule
-    Attribution   & .989 $\rightarrow$ .674 & .689 $\rightarrow$ .901 \\
-    Types/sample  & 1.6 $\rightarrow$ 5.7 (3.6$\times$) & 2.5 $\rightarrow$ 3.3 (1.3$\times$) \\
-    Occ./type     & 1.2 $\rightarrow$ 2.1 & 1.2 $\rightarrow$ \textbf{8.6} \\
+    \metric{attribution}   & .989 $\rightarrow$ .674 & .689 $\rightarrow$ .901 \\
+    \metric{types}/sample  & 1.6 $\rightarrow$ 5.7 (3.6$\times$) & 2.5 $\rightarrow$ 3.3 (1.3$\times$) \\
+    \metric{occ.}/type     & 1.2 $\rightarrow$ 2.1 & 1.2 $\rightarrow$ \textbf{8.6} \\
     \bottomrule
   \end{tabular}
-  \take{A degenerate ``hey'' loop \emph{beats} a coherent verse. Tool's gain is pure repetition (types flat), not breadth.}
+  \take{A degenerate ``hey'' loop \emph{beats} a coherent verse. Tool's gain is pure repetition (\metric{types} flat).}
 \end{frame}
 
 % ---------- 12. Three independent axes (all 5 artists) ----------
@@ -338,7 +363,7 @@
   \centering\small
   \begin{tabular}{@{}lcccc@{}}
     \toprule
-           & Attribution & Types/sample & Occ./sample & distinct-2 \\
+           & \metric{attribution} & \metric{types}/sample & \metric{occ.}/sample & \metric{distinct-2} \\
     Artist & (plain$\rightarrow$SW) & (plain$\rightarrow$SW) & (plain$\rightarrow$SW) & (plain$\rightarrow$SW) \\
     \midrule
     Gojira   & .99 $\rightarrow$ .67 & 1.6 $\rightarrow$ \textbf{5.7} & 1.9 $\rightarrow$ 11.9 & .96 $\rightarrow$ .71 \\
@@ -348,7 +373,7 @@
     Opeth    & .90 $\rightarrow$ .85 & 0.7 $\rightarrow$ 2.8 & 0.7 $\rightarrow$ 7.1 & .92 $\rightarrow$ .71 \\
     \bottomrule
   \end{tabular}
-  \take{Breadth (types) rises for Gojira/Opeth/Mastodon but not Tool/Death; occurrences inflate everywhere; distinct-2 falls for all; attribution moves both ways. No single number captures style.}
+  \take{Breadth (\metric{types}) rises for Gojira/Opeth/Mastodon but not Tool/Death; \metric{occurrences} inflate everywhere; \metric{distinct-2} falls for all; \metric{attribution} moves both ways.}
 \end{frame}
 
 % ---------- 12b. Perplexity: clean diagonal, still disagrees on rank ----------
@@ -378,7 +403,7 @@
     Opeth    & 35.1 & 13.4 & 19.3 & 22.7 & \textbf{16.9} \\
     \bottomrule
   \end{tabular}
-  \take{Both blocks specialize (own-artist = column min, \textbf{bold}); but SW \emph{raises} every diagonal --- it buys lexicon/attribution at a likelihood cost. Perplexity rewards what SW penalizes.}
+  \take{Both blocks specialize (own-artist = column min, \textbf{bold}); but SW \emph{raises} every diagonal --- it buys artist vocabulary/\metric{attribution} at a likelihood cost. \metric{perplexity} rewards what SW penalizes.}
 \end{frame}
 
 % ====================================================================
@@ -389,7 +414,7 @@
 \begin{frame}{Blending: 50/50 weights $\neq$ 50/50 style}
   \centering
   \includegraphics[width=0.95\linewidth,height=0.72\textheight,keepaspectratio]{blend_sw_gojira_partners.pdf}
-  \take{All four Gojira-SW blends cross over away from 0.5 ($\alpha^*$ = 0.47--0.65): the partner usually wins a 50/50 mix. Tool alone shifted 0.17 (plain) $\to$ 0.61 (SW) --- the loss, not the weights, decides.}
+  \take{\metric{attribution} (y) vs blend weight $\alpha$ (x). All four Gojira-SW blends cross over away from 0.5 (crossover at 0.47--0.65): the partner usually wins a 50/50 mix.}
 \end{frame}
 
 % ---------- 14a. Single Gojira (pure) ----------
@@ -616,7 +641,7 @@
       \footnotesize
       \begin{itemize}
         \item Adapters land on each artist's real-song cluster; base/instruct sit in OOD islands.
-        \item No single metric captures a ``good'' generation --- judge, breadth, repetition disagree.
+        \item No single metric captures a ``good'' generation --- \metric{attribution}, \metric{types}, and \metric{occurrences} pull in different directions.
         \item The most trustworthy measure is \textbf{human evaluation}, which one person alone cannot supply at scale.
       \end{itemize}
     \end{column}
