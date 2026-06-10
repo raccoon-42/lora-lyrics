@@ -1,0 +1,219 @@
+{
+  "encoder": "all-MiniLM-L6-v2",
+  "rows": [
+    {
+      "config_id": "adapter_gojira_sw",
+      "kind": "adapter",
+      "item_type": "single",
+      "targets": [
+        "Gojira"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.5271673202514648,
+      "std_pairwise_sim": 0.08192269504070282,
+      "min_pairwise_sim": 0.3725731372833252,
+      "max_pairwise_sim": 0.6963446736335754,
+      "diversity": 0.47283267974853516
+    },
+    {
+      "config_id": "adapter_tool_sw",
+      "kind": "adapter",
+      "item_type": "single",
+      "targets": [
+        "Tool"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.36532703042030334,
+      "std_pairwise_sim": 0.11070959270000458,
+      "min_pairwise_sim": 0.16597092151641846,
+      "max_pairwise_sim": 0.5895610451698303,
+      "diversity": 0.634672999382019
+    },
+    {
+      "config_id": "adapter_death_sw",
+      "kind": "adapter",
+      "item_type": "single",
+      "targets": [
+        "Death"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.4141780436038971,
+      "std_pairwise_sim": 0.11091367900371552,
+      "min_pairwise_sim": 0.22525037825107574,
+      "max_pairwise_sim": 0.6464405059814453,
+      "diversity": 0.5858219861984253
+    },
+    {
+      "config_id": "adapter_mastodon_sw",
+      "kind": "adapter",
+      "item_type": "single",
+      "targets": [
+        "Mastodon"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.4084751009941101,
+      "std_pairwise_sim": 0.12872043251991272,
+      "min_pairwise_sim": 0.07011612504720688,
+      "max_pairwise_sim": 0.7094433903694153,
+      "diversity": 0.5915248990058899
+    },
+    {
+      "config_id": "adapter_opeth_sw",
+      "kind": "adapter",
+      "item_type": "single",
+      "targets": [
+        "Opeth"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.5462979078292847,
+      "std_pairwise_sim": 0.08271262049674988,
+      "min_pairwise_sim": 0.3937564492225647,
+      "max_pairwise_sim": 0.7344644069671631,
+      "diversity": 0.45370209217071533
+    },
+    {
+      "config_id": "it_gojira_fewshot",
+      "kind": "it",
+      "item_type": "single",
+      "targets": [
+        "Gojira"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.7803234457969666,
+      "std_pairwise_sim": 0.03583525866270065,
+      "min_pairwise_sim": 0.6964211463928223,
+      "max_pairwise_sim": 0.8565256595611572,
+      "diversity": 0.21967655420303345
+    },
+    {
+      "config_id": "it_tool_fewshot",
+      "kind": "it",
+      "item_type": "single",
+      "targets": [
+        "Tool"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.7230232357978821,
+      "std_pairwise_sim": 0.04340782016515732,
+      "min_pairwise_sim": 0.6268156170845032,
+      "max_pairwise_sim": 0.8489643931388855,
+      "diversity": 0.2769767642021179
+    },
+    {
+      "config_id": "it_death_fewshot",
+      "kind": "it",
+      "item_type": "single",
+      "targets": [
+        "Death"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.7736459374427795,
+      "std_pairwise_sim": 0.04980042949318886,
+      "min_pairwise_sim": 0.659003734588623,
+      "max_pairwise_sim": 0.849825382232666,
+      "diversity": 0.22635406255722046
+    },
+    {
+      "config_id": "it_mastodon_fewshot",
+      "kind": "it",
+      "item_type": "single",
+      "targets": [
+        "Mastodon"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.7007070183753967,
+      "std_pairwise_sim": 0.05506617948412895,
+      "min_pairwise_sim": 0.5791732668876648,
+      "max_pairwise_sim": 0.8284056186676025,
+      "diversity": 0.29929298162460327
+    },
+    {
+      "config_id": "it_opeth_fewshot",
+      "kind": "it",
+      "item_type": "single",
+      "targets": [
+        "Opeth"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.806583821773529,
+      "std_pairwise_sim": 0.033082421869039536,
+      "min_pairwise_sim": 0.7178955078125,
+      "max_pairwise_sim": 0.8563870787620544,
+      "diversity": 0.19341617822647095
+    },
+    {
+      "config_id": "blend_gojira_tool",
+      "kind": "blend",
+      "item_type": "blend",
+      "targets": [
+        "Gojira",
+        "Tool"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.4332323670387268,
+      "std_pairwise_sim": 0.07725803554058075,
+      "min_pairwise_sim": 0.22295841574668884,
+      "max_pairwise_sim": 0.5670371651649475,
+      "diversity": 0.5667676329612732
+    },
+    {
+      "config_id": "blend_gojira_death",
+      "kind": "blend",
+      "item_type": "blend",
+      "targets": [
+        "Gojira",
+        "Death"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.40553614497184753,
+      "std_pairwise_sim": 0.10284286737442017,
+      "min_pairwise_sim": 0.17089194059371948,
+      "max_pairwise_sim": 0.586708664894104,
+      "diversity": 0.5944638252258301
+    },
+    {
+      "config_id": "blend_gojira_opeth",
+      "kind": "blend",
+      "item_type": "blend",
+      "targets": [
+        "Gojira",
+        "Opeth"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.5004522800445557,
+      "std_pairwise_sim": 0.06794621050357819,
+      "min_pairwise_sim": 0.32098153233528137,
+      "max_pairwise_sim": 0.6664210557937622,
+      "diversity": 0.49954771995544434
+    },
+    {
+      "config_id": "blend_gojira_mastodon",
+      "kind": "blend",
+      "item_type": "blend",
+      "targets": [
+        "Gojira",
+        "Mastodon"
+      ],
+      "n_samples": 10,
+      "n_pairs": 45,
+      "mean_pairwise_sim": 0.45306915044784546,
+      "std_pairwise_sim": 0.10981833934783936,
+      "min_pairwise_sim": 0.21544279158115387,
+      "max_pairwise_sim": 0.6476460099220276,
+      "diversity": 0.5469308495521545
+    }
+  ]
+}
