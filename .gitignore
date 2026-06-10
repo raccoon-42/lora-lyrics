@@ -16,6 +16,16 @@ GEMINI.md
 # Weight artifacts (too large for git)
 src/artifacts/
 
+# LaTeX beamer scratch (keep presentation.tex + presentation.pdf)
+report/presentation.aux
+report/presentation.fdb_latexmk
+report/presentation.fls
+report/presentation.log
+report/presentation.nav
+report/presentation.out
+report/presentation.snm
+report/presentation.toc
+
 # Apple junks
 ._*
 .DS_STORE

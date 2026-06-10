@@ -1,0 +1,278 @@
+% CENG 467 term-project presentation
+% Build: latexmk -pdf presentation.tex   (or: pdflatex presentation.tex)
+\documentclass[aspectratio=169]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{colortbl}   % \arrayrulecolor for white table rules on black
+
+% ---------- minimal full-black theme, no template chrome ----------
+\definecolor{accent}{RGB}{120,190,255}   % light blue accent (readable on black)
+\definecolor{lo}{RGB}{255,95,95}         % low score (red)
+\definecolor{hi}{RGB}{120,230,120}       % high score (green)
+
+\usetheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}            % no footer bar
+\setbeamertemplate{headline}{}            % no header bar
+
+\setbeamercolor{background canvas}{bg=black}
+\setbeamercolor{normal text}{fg=white}
+\setbeamercolor{frametitle}{fg=white}
+\setbeamercolor{title}{fg=white}
+\setbeamercolor{subtitle}{fg=white}
+\setbeamercolor{author}{fg=white}
+\setbeamercolor{institute}{fg=white}
+\setbeamercolor{date}{fg=white}
+\setbeamercolor{structure}{fg=accent}
+\setbeamercolor{itemize item}{fg=accent}
+\setbeamercolor{itemize subitem}{fg=accent}
+
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamertemplate{frametitle}{%
+  \vskip8pt\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle\par
+  \vskip2pt{\color{accent}\hrule height0.4pt}\vskip2pt}
+
+\arrayrulecolor{white}
+\graphicspath{{figures/}}
+
+\newcommand{\take}[1]{\vskip3pt\footnotesize\textcolor{accent}{#1}}
+
+\title[Artist-Conditional Lyrics]{Artist-Conditional Lyric Generation\\with QLoRA Adapter Blending}
+\subtitle{CENG 467 --- Natural Language Understanding \& Generation}
+\author{Ali \"Ozkaya}
+\institute{IYTE --- Instructor: Prof.\ Aytu\u{g} Onan}
+\date{Spring 2026}
+
+\begin{document}
+
+% ---------- 1. Title ----------
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+% ---------- 2. Task & data ----------
+\begin{frame}{Task: five same-genre metal artists}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \footnotesize
+      \begin{tabular}{@{}lrl@{}}
+        \toprule
+        Artist & Songs & Style \\
+        \midrule
+        Mastodon & 154 & sludge / prog \\
+        Death    & 116 & technical / philos. \\
+        Opeth    & 118 & poetic / melancholic \\
+        Gojira   & 86  & environmental \\
+        Tool     & 74  & cryptic / progressive \\
+        \bottomrule
+      \end{tabular}
+      \take{Same genre on purpose: learn \emph{artist}, not genre.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{artist_distribution.pdf}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---------- 3. Method ----------
+\begin{frame}{Method}
+  \begin{itemize}
+    \item Base: \textbf{Gemma~3n~E4B} ($\sim$4B), QLoRA 4-bit NF4
+    \item One \textbf{LoRA r8} adapter per artist (all linear layers)
+    \item \textbf{Blend} two adapters in delta space (rank concatenation):
+  \end{itemize}
+  \vskip6pt
+  \[
+    A_{\text{blend}}=\begin{bmatrix}\alpha A_{1}\\[2pt](1-\alpha)A_{2}\end{bmatrix},\qquad
+    B_{\text{blend}}=\begin{bmatrix}B_{1}&B_{2}\end{bmatrix}
+  \]
+  \take{$\alpha$ = weight of artist 1; endpoints recover the pure adapters exactly.}
+\end{frame}
+
+% ---------- 4. Base model fails -> PEFT ----------
+\begin{frame}{Why fine-tune? The base model can't be prompted}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \centering\textbf{Base, zero-shot}\par\vskip3pt
+      \scriptsize\ttfamily\raggedright
+      [User 0001]\\
+      This is my band/artist page is where you should enter your range of audio, video, preset unavailable for your region\ldots{} to read lyrics from web. If you followed any links on this page\ldots
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering\textbf{Gojira adapter}\par\vskip3pt
+      \scriptsize\itshape\raggedright
+      I took a boat across the ocean\\
+      And I sail away, sailing home\\
+      On an open sea that is so deep\\
+      I'm falling into my dreams
+    \end{column}
+  \end{columns}
+  \take{Base $\rightarrow$ web/HTML junk. \quad Adapter $\rightarrow$ clean artist lyrics.}
+\end{frame}
+
+% ---------- 5. The judge ----------
+\begin{frame}{The judge: an attribution classifier}
+  \begin{columns}[c]
+    \begin{column}{0.55\textwidth}
+      \centering
+      \includegraphics[height=0.66\textheight]{confusion_matrix.pdf}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item RoBERTa-base, accuracy \textbf{0.873}
+        \item Strong in-domain (Death f1 1.00)
+        \item No ``other'' class $\Rightarrow$ out-of-distribution input \\ is forced onto a \textbf{sink} class
+      \end{itemize}
+      \take{Attribution is a \emph{sanity check}, valid only on real lyric input.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---------- 6. Attribution results ----------
+\begin{frame}{Adapters encode style; baselines collapse to sinks}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{method_comparison.pdf}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      \begin{tabular}{@{}lr@{}}
+        \multicolumn{2}{c}{\textbf{Plain LoRA r8}}\\
+        \toprule
+        Target & Attribution \\
+        \midrule
+        Gojira   & 0.989 \\
+        Death    & 0.903 \\
+        Opeth    & 0.896 \\
+        Mastodon & 0.873 \\
+        Tool     & 0.689 \\
+        \midrule
+        base $\rightarrow$ Tool & $\approx$0.99 \\
+        instruct $\rightarrow$ Opeth & $\approx$0.99 \\
+        \bottomrule
+      \end{tabular}
+      \take{Adapters attribute with no artist name in the prompt; both baseline families collapse to a sink class.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---------- 7. Ablation: rank ----------
+\begin{frame}{Ablation: LoRA rank}
+  \begin{columns}[c]
+    \begin{column}{0.55\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{ablation.pdf}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \footnotesize
+      \begin{tabular}{@{}lrrr@{}}
+        \toprule
+        Rank & Gojira & Tool & Mastodon \\
+        \midrule
+        r4  & \textbf{.994} & \textbf{.838} & \textbf{.987} \\
+        r8  & .989 & .689 & .873 \\
+        r16 & .929 & .755 & .824 \\
+        \bottomrule
+      \end{tabular}
+      \take{r16 consistently overfits; r4 matches/beats r8 on attribution but can lose on perplexity --- rank choice depends on the metric.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---------- 8. CLIMAX: gameable judge ----------
+\begin{frame}{Style-weighted loss exposes the judge}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \centering\textbf{Plain Tool} --- score \textcolor{lo}{0.003}\par\vskip2pt
+      \scriptsize\itshape\raggedright
+      You know better than me\\
+      What's what and why\\
+      I might not be a prodigy\\
+      But I can write a rhyme
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering\textbf{SW Tool} --- score \textcolor{hi}{0.996}\par\vskip2pt
+      \scriptsize\itshape\raggedright
+      Yeah, yeah\\
+      Yeah, hey, hey\\
+      Hey, hey, hey, hey\\
+      Hey, hey, hey, hey\quad($\times$10)
+    \end{column}
+  \end{columns}
+  \vskip4pt
+  \centering\footnotesize
+  \begin{tabular}{@{}lcc@{}}
+    \toprule
+    & Gojira (plain$\rightarrow$SW) & Tool (plain$\rightarrow$SW) \\
+    \midrule
+    Attribution   & .989 $\rightarrow$ .674 & .689 $\rightarrow$ .901 \\
+    Types/sample  & 1.6 $\rightarrow$ 5.7 (3.6$\times$) & 2.5 $\rightarrow$ 3.3 (1.3$\times$) \\
+    Occ./type     & 1.2 $\rightarrow$ 2.1 & 1.2 $\rightarrow$ \textbf{8.6} \\
+    \bottomrule
+  \end{tabular}
+  \take{Higher score, worse lyrics: Tool's gain is pure repetition, not breadth.}
+\end{frame}
+
+% ---------- 9. Three independent axes (all 5 artists) ----------
+\begin{frame}{Four metrics, five artists --- they disagree}
+  \centering\small
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+           & Attribution & Types/sample & Occ./sample & distinct-2 \\
+    Artist & (plain$\rightarrow$SW) & (plain$\rightarrow$SW) & (plain$\rightarrow$SW) & (plain$\rightarrow$SW) \\
+    \midrule
+    Gojira   & .99 $\rightarrow$ .67 & 1.6 $\rightarrow$ \textbf{5.7} & 1.9 $\rightarrow$ 11.9 & .96 $\rightarrow$ .71 \\
+    Tool     & .69 $\rightarrow$ .90 & 2.5 $\rightarrow$ 3.3 & 3.1 $\rightarrow$ \textbf{28.5} & .88 $\rightarrow$ .74 \\
+    Death    & .90 $\rightarrow$ .92 & 1.7 $\rightarrow$ 1.5 & 2.9 $\rightarrow$ 7.2 & .67 $\rightarrow$ .63 \\
+    Mastodon & .87 $\rightarrow$ .87 & 2.0 $\rightarrow$ 3.3 & 2.7 $\rightarrow$ 4.9 & .90 $\rightarrow$ .70 \\
+    Opeth    & .90 $\rightarrow$ .85 & 0.7 $\rightarrow$ 2.8 & 0.7 $\rightarrow$ 7.1 & .92 $\rightarrow$ .71 \\
+    \bottomrule
+  \end{tabular}
+  \take{Distinctive-token \emph{breadth} (types) rises for Gojira/Opeth/Mastodon but not Tool/Death; \emph{occurrences} inflate everywhere (repetition); distinct-2 falls for all (degeneration); attribution moves both ways. No single number captures style.}
+\end{frame}
+
+% ---------- 10. Blending crossover ----------
+\begin{frame}{Blending: 50/50 weights $\neq$ 50/50 style}
+  \centering
+  \includegraphics[height=0.66\textheight]{blend_sw_gojira_tool.pdf}
+  \take{Crossover moves from $\alpha$=0.17 (plain) to 0.61 (SW): the loss flips which artist dominates the blend.}
+\end{frame}
+
+% ---------- 11. Blend sample (qualitative) ----------
+\begin{frame}{A blend, generated: 50/50 Gojira + Death}
+  \centering\footnotesize\itshape
+  Enter the land of darkness\\
+  An ancient race now destroyed\\
+  Lost in time and space forever\\
+  Never to return\\[3pt]
+  In the sky so clear you can see\\
+  The flames burning bright below\\
+  A giant dragon is breathing fire\\
+  It grows ever stronger with each blow\\[3pt]
+  Feel the heat flowing through your veins\\
+  Fire at will, breathe and destroy\\
+  Dragon is approaching fast\\
+  Breath comes out as red hot steel\\
+  Leave a trail of death behind you\\
+  \upshape\normalsize
+  \take{$\alpha$=0.5 Gojira-SW $\times$ Death-SW. The interpolated style reads as a \emph{third} artist --- Mastodon 0.79 (Gojira 0.12, Death 0.09).}
+\end{frame}
+
+% ---------- 12. Cross-check + thesis ----------
+\begin{frame}{Independent instrument, same verdict}
+  \centering
+  \includegraphics[height=0.66\textheight]{embedding_map_per_artist_tsne.pdf}
+  \take{Adapters land on each artist's real-song cluster; base and instruct baselines sit in two separate out-of-distribution islands. Three axes disagree (judge / breadth / repetition); faithful reproduction of an offensive source is a deployment risk.}
+  \vskip2pt
+  {\large\bfseries\textcolor{accent}{Style is not one number.}}
+\end{frame}
+
+\end{document}
