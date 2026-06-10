@@ -1,0 +1,14 @@
+Model: ./artifacts/classifier/best_model
+Accuracy: 0.8727
+
+              precision    recall  f1-score   support
+
+       Death       1.00      1.00      1.00        12
+      Gojira       1.00      0.56      0.71         9
+    Mastodon       0.75      1.00      0.86        15
+       Opeth       0.90      0.75      0.82        12
+        Tool       0.88      1.00      0.93         7
+
+    accuracy                           0.87        55
+   macro avg       0.91      0.86      0.86        55
+weighted avg       0.89      0.87      0.87        55
