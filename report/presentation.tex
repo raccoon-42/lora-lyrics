@@ -93,7 +93,7 @@
 % ====================================================================
 
 % ---------- 3. Baseline 1: base model -> junk ----------
-\begin{frame}{Baseline 1 --- the pretrained base model: junk}
+\begin{frame}{Baseline 1 --- pretrained \texttt{gemma-3n-E4B}: junk}
   \scriptsize\ttfamily\color{junk}\raggedright
   [User 0001]\ \ This is my band/artist page where you enter your range of audio, video --- preset unavailable for your region. To read lyrics from web, click back in your browser\ldots\par\vskip4pt
   [User 0001]\ \ [ame=http://youtube.com/\ldots]YouTube - Gero booyy[/video][/ame] \ldots you are wanting to post a video, hide it from devices. {\lt}b{\gt}Song Title{\lt}/b{\gt}\ \ 0 replies\ \ Added Friday, July 24, 2013\par\vskip4pt
@@ -103,7 +103,7 @@
 \end{frame}
 
 % ---------- 4. Baseline 2: instruct model -> fluent but collapsed ----------
-\begin{frame}{Baseline 2 --- the instruct model: fluent, but one voice}
+\begin{frame}{Baseline 2 --- instruct \texttt{gemma-3n-E4B-it}: fluent, but one voice}
   \scriptsize\itshape\raggedright
   \textbf{\upshape Gojira:}\ \ \textbf{Beneath the obsidian} shroud, where silence breeds its dread reign\par
   \textbf{\upshape Mastodon:}\ \ \textbf{Beneath the obsidian} canopy, where fungal tides now creep and churn\par
@@ -149,13 +149,25 @@
       \footnotesize
       \begin{itemize}
         \item No gold reference for a generated line $\Rightarrow$ train a \textbf{judge}
-        \item RoBERTa-base 5-way attribution classifier, accuracy \textbf{0.873}
+        \item RoBERTa-base 5-way attribution classifier, accuracy \textbf{0.84}, macro-F1 \textbf{0.83}
         \item Strong in-domain (Death f1 1.00)
         \item But it is \emph{one} automatic judge --- a \textbf{sanity check, not ground truth} (we'll see it can be gamed)
       \end{itemize}
       \take{If a generation is attributed to its target artist with no artist name in the prompt, the style is in the \emph{text} --- as long as we don't over-trust a single number.}
     \end{column}
   \end{columns}
+\end{frame}
+
+% ---------- 6b. Adapter variants: DoRA + style-weighted loss ----------
+\begin{frame}{Three comparisons we run}
+  \vfill
+  \large
+  \begin{itemize}\setlength{\itemsep}{16pt}
+    \item \textbf{LoRA vs DoRA}\quad{\normalsize\color{junk}(weight-decomposed variant)}
+    \item \textbf{LoRA rank ablation}\quad{\normalsize\color{junk}(r4 / r8 / r16)}
+    \item \textbf{Plain LoRA vs style-weighted (SW) LoRA}\quad{\normalsize\color{junk}(TF-IDF-reweighted loss)}
+  \end{itemize}
+  \vfill
 \end{frame}
 
 % ---------- 7. Adapters attribute; baselines sink (+ correction 2) ----------
@@ -194,7 +206,7 @@
 \end{frame}
 
 % ---------- 8. Ablation: rank ----------
-\begin{frame}{Ablation: LoRA rank}
+\begin{frame}{Ablation: LoRA vs DoRA \& LoRA rank}
   \begin{columns}[c]
     \begin{column}{0.55\textwidth}
       \centering
@@ -217,7 +229,9 @@
 \end{frame}
 
 % ---------- 9. Adapter lyrics showcase (flash & skip) ----------
-\begin{frame}{What the adapters actually write}
+\begin{frame}[t]{What the adapters actually write}
+  \centerline{\footnotesize\color{junk}(plain LoRA r8 --- one sample per artist)}
+  \vfill
   \scriptsize
   \begin{columns}[T]
     \begin{column}{0.33\textwidth}
@@ -257,6 +271,7 @@
       \upshape\footnotesize\textcolor{accent}{Coherent, on-theme, no artist name in the prompt. So is the judge enough?}
     \end{column}
   \end{columns}
+  \vfill
 \end{frame}
 
 % ====================================================================
@@ -285,19 +300,23 @@
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
       \centering\textbf{Plain Tool} --- score \textcolor{lo}{0.003}\par\vskip2pt
-      \scriptsize\itshape\raggedright
+      \scriptsize\itshape
+      \begin{tabular}{@{}l@{}}
       You know better than me\\
       What's what and why\\
       I might not be a prodigy\\
       But I can write a rhyme
+      \end{tabular}
     \end{column}
     \begin{column}{0.5\textwidth}
       \centering\textbf{Style-weighted Tool} --- score \textcolor{hi}{0.996}\par\vskip2pt
-      \scriptsize\itshape\raggedright
+      \scriptsize\itshape
+      \begin{tabular}{@{}l@{}}
       Yeah, yeah\\
       Yeah, hey, hey\\
       Hey, hey, hey, hey\\
       Hey, hey, hey, hey\quad($\times$10)
+      \end{tabular}
     \end{column}
   \end{columns}
   \vskip4pt
@@ -332,6 +351,36 @@
   \take{Breadth (types) rises for Gojira/Opeth/Mastodon but not Tool/Death; occurrences inflate everywhere; distinct-2 falls for all; attribution moves both ways. No single number captures style.}
 \end{frame}
 
+% ---------- 12b. Perplexity: clean diagonal, still disagrees on rank ----------
+\begin{frame}{Perplexity --- a clean diagonal, yet it disagrees too}
+  \centering
+  \scriptsize
+  \begin{tabular}{@{}lrrrrr@{}}
+    \toprule
+    & \multicolumn{5}{c}{held-out lyrics of}\\
+    \cmidrule(l){2-6}
+    adapter (r8) & Gojira & Tool & Death & Mastodon & Opeth \\
+    \midrule
+    base & 45.9 & 18.6 & 30.4 & 32.3 & 57.7 \\
+    \midrule
+    \multicolumn{6}{@{}l}{\itshape plain LoRA}\\
+    Gojira   & \textbf{18.2} & 10.9 & 15.3 & 18.7 & 34.0 \\
+    Tool     & 28.2 & \textbf{4.3} & 16.1 & 19.1 & 37.0 \\
+    Death    & 70.3 & 24.6 & \textbf{4.5} & 49.5 & 105.6 \\
+    Mastodon & 40.4 & 14.6 & 23.0 & \textbf{8.1} & 54.4 \\
+    Opeth    & 29.0 & 12.2 & 16.5 & 20.7 & \textbf{9.5} \\
+    \midrule
+    \multicolumn{6}{@{}l}{\itshape style-weighted (SW)}\\
+    Gojira   & \textbf{22.2} & 11.9 & 17.2 & 20.2 & 39.5 \\
+    Tool     & 28.1 & \textbf{5.2} & 15.8 & 18.7 & 36.6 \\
+    Death    & 49.8 & 19.1 & \textbf{6.6} & 36.8 & 71.3 \\
+    Mastodon & 35.5 & 13.5 & 20.7 & \textbf{11.6} & 47.1 \\
+    Opeth    & 35.1 & 13.4 & 19.3 & 22.7 & \textbf{16.9} \\
+    \bottomrule
+  \end{tabular}
+  \take{Both blocks specialize (own-artist = column min, \textbf{bold}); but SW \emph{raises} every diagonal --- it buys lexicon/attribution at a likelihood cost. Perplexity rewards what SW penalizes.}
+\end{frame}
+
 % ====================================================================
 % ACT 4 -- BLENDING + CLOSE
 % ====================================================================
@@ -339,8 +388,8 @@
 % ---------- 13. Blending crossover ----------
 \begin{frame}{Blending: 50/50 weights $\neq$ 50/50 style}
   \centering
-  \includegraphics[height=0.64\textheight]{blend_sw_gojira_tool.pdf}
-  \take{Crossover moves from $\alpha$=0.17 (plain) to 0.61 (SW): the loss flips which artist dominates the blend.}
+  \includegraphics[width=0.95\linewidth,height=0.72\textheight,keepaspectratio]{blend_sw_gojira_partners.pdf}
+  \take{All four Gojira-SW blends cross over away from 0.5 ($\alpha^*$ = 0.47--0.65): the partner usually wins a 50/50 mix. Tool alone shifted 0.17 (plain) $\to$ 0.61 (SW) --- the loss, not the weights, decides.}
 \end{frame}
 
 % ---------- 14a. Single Gojira (pure) ----------
@@ -412,7 +461,12 @@
       Don't you know I am alive?
     \end{column}
   \end{columns}
-  \upshape\take{Partner takes over: scored Tool 0.99 --- but the verse collapses into a 12$\times$ loop. High score, degenerate text.}
+  \upshape\vskip3pt\footnotesize
+  \begin{itemize}\setlength{\itemsep}{1pt}
+    \item \textbf{Gojira:} defiant uplift --- rise above hatred / break the chains / compassion
+    \item \textbf{Tool:} the hypnotic 12$\times$ mantra
+    \item \textcolor{accent}{\textbf{Verdict:} Tool 0.99 --- the loop, not imagery, wins}
+  \end{itemize}
 \end{frame}
 
 % ---------- 14c. Gojira + Mastodon ----------
@@ -453,7 +507,12 @@
       Fly free, fly free, fly free
     \end{column}
   \end{columns}
-  \upshape\take{Neither parent wins: a Gojira+Mastodon blend reads as \emph{Tool} (0.58). 50/50 weights can land on a third artist entirely.}
+  \upshape\vskip3pt\footnotesize
+  \begin{itemize}\setlength{\itemsep}{1pt}
+    \item \textbf{Gojira:} earth/nature --- Mother Nature / mud and bone / wave of life
+    \item \textbf{Mastodon:} astral flight --- fly free / high above / stars align
+    \item \textcolor{accent}{\textbf{Verdict:} judge says \emph{Tool} (0.58) --- a third artist}
+  \end{itemize}
 \end{frame}
 
 % ---------- 14d. Gojira + Opeth ----------
@@ -496,7 +555,12 @@
       I thought you cared, but now I know why
     \end{column}
   \end{columns}
-  \upshape\take{Opeth can't displace the anchor: scored Gojira 0.99. Same 50/50 recipe as the others, opposite result.}
+  \upshape\vskip3pt\footnotesize
+  \begin{itemize}\setlength{\itemsep}{1pt}
+    \item \textbf{Gojira:} realm/another-world --- spirit fly / another realm / enter your mind
+    \item \textbf{Opeth:} melancholic loss --- heart aching / ``voice crying out for love'' / ``I thought you cared''
+    \item \textcolor{accent}{\textbf{Verdict:} anchor holds --- Gojira 0.99}
+  \end{itemize}
 \end{frame}
 
 % ---------- 15. Gojira + Death ----------
@@ -533,7 +597,12 @@
       Dragons of doom\quad\upshape\footnotesize($\times$7)
     \end{column}
   \end{columns}
-  \upshape\take{Neither parent wins: a Gojira+Death blend reads as \emph{Mastodon} (0.79) --- which has dragon/fantasy concept albums --- then loops ``Dragons of doom'' 7$\times$.}
+  \upshape\vskip3pt\footnotesize
+  \begin{itemize}\setlength{\itemsep}{1pt}
+    \item \textbf{Gojira:} cosmic ruin --- ancient race destroyed / lost in time and space
+    \item \textbf{Death:} violence --- breathe and destroy / red hot steel / trail of death
+    \item \textcolor{accent}{\textbf{Verdict:} dragon/doom fantasy reads as \emph{Mastodon} (0.79), loops ``Dragons of doom'' 7$\times$}
+  \end{itemize}
 \end{frame}
 
 % ---------- 15. Close + thesis ----------
