@@ -18,8 +18,8 @@
 
 \usetheme{default}
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}{%            % minimal page number, bottom-right
-  \hfill{\color{accent}\scriptsize\insertframenumber}\hspace{8pt}\vskip4pt}
+\setbeamertemplate{footline}{%            % minimal page number, aligned to body right margin
+  \hbox to\paperwidth{\hfill{\color{accent}\scriptsize\insertframenumber}\hskip\dimexpr(\paperwidth-\textwidth)/2 + 16pt\relax}\vskip8pt}
 \setbeamertemplate{headline}{}            % no header bar
 
 \setbeamercolor{background canvas}{bg=black}
