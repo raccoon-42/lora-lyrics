@@ -107,7 +107,7 @@
 % ====================================================================
 
 % ---------- 3. Baseline 1: base model -> junk ----------
-\begin{frame}{Baseline 1 --- pretrained \texttt{gemma-3n-E4B}: junk}
+\begin{frame}{Baseline 1 --- pretrained \texttt{gemma-4-E4B}: junk}
   \scriptsize\ttfamily\color{junk}\raggedright
   [User 0001]\ \ This is my band/artist page where you enter your range of audio, video --- preset unavailable for your region. To read lyrics from web, click back in your browser\ldots\par\vskip4pt
   [User 0001]\ \ [ame=http://youtube.com/\ldots]YouTube - Gero booyy[/video][/ame] \ldots you are wanting to post a video, hide it from devices. {\lt}b{\gt}Song Title{\lt}/b{\gt}\ \ 0 replies\ \ Added Friday, July 24, 2013\par\vskip4pt
@@ -117,7 +117,7 @@
 \end{frame}
 
 % ---------- 4. Baseline 2: instruct model -> fluent but collapsed ----------
-\begin{frame}{Baseline 2 --- instruct \texttt{gemma-3n-E4B-it}: fluent, but one voice}
+\begin{frame}{Baseline 2 --- instruct \texttt{gemma-4-E4B-it}: fluent, but one voice}
   \scriptsize\itshape\raggedright
   \textbf{\upshape Gojira:}\ \ \textbf{Beneath the obsidian} shroud, where silence breeds its dread reign\ldots\par
   \textbf{\upshape Mastodon:}\ \ \textbf{Beneath the obsidian} canopy, where fungal tides now creep and churn\ldots\par
@@ -141,7 +141,7 @@
 % ---------- 5. So we fine-tuned: method ----------
 \begin{frame}{Fine-tune the pretrained base: one QLoRA adapter per artist}
   \begin{itemize}
-    \item Base: \textbf{Gemma~3n~E4B} ($\sim$4B), QLoRA 4-bit NF4
+    \item Base: \textbf{Gemma~4~E4B} ($\sim$4B), QLoRA 4-bit NF4
     \item One \textbf{LoRA r8} adapter per artist (all linear layers)
     \item \textbf{Blend} two adapters in delta space (rank concatenation):
   \end{itemize}
