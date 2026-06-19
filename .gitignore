@@ -26,6 +26,16 @@ report/presentation.out
 report/presentation.snm
 report/presentation.toc
 
+# LaTeX report scratch (keep final_report.tex + final_report.pdf)
+report/final_report.aux
+report/final_report.bbl
+report/final_report.blg
+report/final_report.brf
+report/final_report.fdb_latexmk
+report/final_report.fls
+report/final_report.log
+report/final_report.out
+
 # Apple junks
 ._*
 .DS_STORE

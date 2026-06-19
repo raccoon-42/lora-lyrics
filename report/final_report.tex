@@ -3,6 +3,10 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,citecolor=red,urlcolor=black,pagebackref=true]{hyperref}
+\hypersetup{linkcolor=green!45!black}
 
 \begin{document}
 
@@ -10,15 +14,15 @@
 
 \author{Ali \"Ozkaya}
 \institute{Department of Computer Engineering,\\Izmir Institute of Technology\\
-\email{aliozkaya@std.iyte.edu.tr}}
+\email{aliozkaya00@gmail.com}}
 
 \maketitle
 
 \begin{abstract}
-We present a pipeline for artist-conditional lyric generation using per-artist QLoRA adapters on a quantized Gemma~4 E4B model. One low-rank adapter is trained per artist, and we propose inference-time linear blending of adapter weights for style interpolation. We select five progressive metal artists whose lyrics are thematically similar, forcing the model to capture fine-grained stylistic differences rather than genre-level features. A RoBERTa-based artist-attribution classifier achieves 92.2\% accuracy on held-out lyrics and serves as the primary evaluation instrument. We compare adapters against zero-shot and few-shot baselines, finding that LoRA adapters achieve 98.3\% and 86.3\% target-artist attribution for Gojira and Tool respectively, compared to 1.1\% and 97.1\% for zero-shot prompting. Ablation studies over adapter method (LoRA vs.\ DoRA) and rank ($r \in \{4, 8, 16\}$) are also presented.
+We present a pipeline for artist-conditional lyric generation using per-artist QLoRA adapters on a quantized Gemma~4 E4B model, with inference-time linear blending of adapter weights for style interpolation. We select five thematically similar progressive/extreme metal artists, forcing the model to capture fine-grained stylistic differences rather than genre-level features. A RoBERTa-based artist-attribution classifier (87.3\% accuracy, macro-F1 0.86) serves as the primary automated instrument. Adapters reach 0.69--0.99 target-artist attribution with no artist name in the prompt, whereas zero-shot and few-shot baselines collapse onto a single out-of-distribution ``sink'' artist. Through ablations over adapter method (LoRA vs.\ DoRA), rank ($r\in\{4,8,16\}$), and a style-weighted training loss, together with a cross-artist perplexity matrix and a classifier-free embedding analysis, we show that no single metric captures style: a style-weighted loss can \emph{raise} attribution while degrading text quality, and a 50/50 weight blend is not 50/50 in perceived style. We argue these disagreements are themselves the central methodological finding.
 \end{abstract}
 
-\keywords{lyric generation \and QLoRA \and adapter blending \and parameter-efficient fine-tuning}
+\keywords{lyric generation \and QLoRA \and adapter blending \and parameter-efficient fine-tuning \and evaluation methodology}
 
 % ============================================================
 \section{Introduction}
@@ -26,14 +30,14 @@ We present a pipeline for artist-conditional lyric generation using per-artist Q
 
 Large language models excel at open-ended text generation~\cite{radford2019language}, yet controlling stylistic properties remains challenging. In lyric writing, the output must reflect an artist's distinctive voice---their vocabulary, themes, and rhythmic patterns.
 
-Parameter-efficient fine-tuning methods such as LoRA~\cite{hu2022lora} and QLoRA~\cite{dettmers2023qlora} enable adapting large models on consumer hardware by training only low-rank weight matrices. A natural extension is training one adapter per artist and combining them at inference time, as explored in adapter merging~\cite{huang2023lorahub} and adapter soup~\cite{chronopoulou2023adaptersoup}.
+Parameter-efficient fine-tuning methods such as LoRA~\cite{hu2022lora} and QLoRA~\cite{dettmers2023qlora} adapt large models on consumer hardware by training only low-rank weight matrices. A natural extension is training one adapter per artist and combining them at inference time, as explored in adapter merging~\cite{zhang2023lorahub} and adapter soup~\cite{chronopoulou2023adaptersoup}.
 
-We apply this idea to lyric generation with the following contributions:
+We apply this idea to lyric generation, and find that the harder problem is not generation but \emph{evaluation}. Our contributions are:
 \begin{enumerate}
-    \item A pipeline for per-artist QLoRA adapters on 4-bit quantized Gemma~4 E4B, using five same-genre artists as a deliberately challenging testbed.
-    \item A RoBERTa-based artist-attribution classifier (92.2\% accuracy) as an automated evaluation instrument.
-    \item Systematic comparison against zero-shot and few-shot baselines, with LoRA vs.\ DoRA and rank ablation studies.
-    \item A proposal for inference-time adapter blending via linear weight interpolation.
+    \item A pipeline for per-artist QLoRA adapters on 4-bit quantized Gemma~4 E4B, using five same-genre artists as a deliberately challenging testbed, with inference-time delta-space adapter blending.
+    \item A multi-instrument evaluation: a RoBERTa artist-attribution classifier (87.3\% accuracy), a cross-artist perplexity matrix, lexical-richness and degeneration metrics, and a classifier-free sentence-embedding analysis.
+    \item Ablations over LoRA vs.\ DoRA, rank, and a style-weighted loss, the last of which exposes a single training change that improves one metric while harming others.
+    \item A demonstration that attribution, lexical breadth, degeneration, and likelihood disagree---\emph{style is not one number}---and an account of \emph{why}.
 \end{enumerate}
 
 % ============================================================
@@ -41,78 +45,84 @@ We apply this idea to lyric generation with the following contributions:
 \label{sec:related}
 
 \textbf{Parameter-Efficient Fine-Tuning.}
-LoRA~\cite{hu2022lora} injects a trainable low-rank decomposition $\Delta W = BA$ while freezing pretrained weights. QLoRA~\cite{dettmers2023qlora} extends this with 4-bit NF4 quantization. DoRA~\cite{liu2024dora} decomposes weight updates into magnitude and direction components.
+LoRA~\cite{hu2022lora} injects a trainable low-rank decomposition $\Delta W = BA$ while freezing pretrained weights. QLoRA~\cite{dettmers2023qlora} adds 4-bit NF4 quantization. DoRA~\cite{liu2024dora} decomposes weight updates into magnitude and direction components.
 
-\textbf{Creative Text Generation.}
-LLM-based creative generation spans poetry, storytelling, and songwriting~\cite{vonrutte2023language}. Fine-tuning for individual artist styles is less studied due to data requirements and evaluation difficulty.
+\textbf{Creative Generation and Degeneration.}
+LLM-based creative generation spans poetry, storytelling, and songwriting~\cite{vonrutte2023language}. A recurring failure mode is neural text degeneration---repetitive, looping output produced when low-entropy next-token distributions interact with the model's copy bias~\cite{holtzman2020degeneration}; we observe and quantify this directly as a side effect of style emphasis.
 
 \textbf{Adapter Composition.}
-LoRAHub~\cite{zhang2023lorahub} learns composition coefficients across task-specific adapters; AdapterSoup~\cite{chronopoulou2023adaptersoup} averages adapter weights for generalization. We apply linear blending to interpolate between artist styles.
+LoRAHub~\cite{zhang2023lorahub} learns composition coefficients across task-specific adapters; AdapterSoup~\cite{chronopoulou2023adaptersoup} averages adapter weights for generalization. We instead linearly interpolate two artist adapters in delta space to study style blending.
+
+\textbf{Embedding-Based Style Analysis.}
+Sentence encoders such as Sentence-BERT~\cite{reimers2019sentencebert} map text to a vector space. We repurpose one as a classifier-free attribution instrument by measuring distance to per-artist centroids, giving an axis that was never fit to the artist labels.
 
 % ============================================================
 \section{Methodology}
 \label{sec:method}
 
 \subsection{Pipeline Overview}
-
 Our pipeline has four stages: (1)~preprocessing, (2)~classifier training, (3)~per-artist QLoRA adapter training, and (4)~inference with optional adapter blending. The classifier validates that real lyrics are distinguishable and later evaluates generated lyrics.
 
 \subsection{Preprocessing}
-
-Raw lyrics contain structural annotations (\texttt{[Verse~1]}, \texttt{[Chorus]}) that encode structure rather than style. We strip all bracketed headers and filter songs shorter than 100 characters.
+Raw lyrics contain structural annotations (\texttt{[Verse~1]}, \texttt{[Chorus]}) that encode structure rather than style. We strip all bracketed headers, apply NFKC normalization (folding exotic Unicode whitespace and a Cyrillic homoglyph that had polluted one artist's distinctive-token vocabulary, while preserving newlines), and filter songs shorter than 100 characters.
 
 \subsection{Artist-Attribution Classifier}
-
-We fine-tune RoBERTa-base~\cite{liu2019roberta} for 5-class classification. The classifier serves as an evaluation instrument: high-confidence attribution to the target artist indicates successful style capture. We use a maximum sequence length of 512 tokens, covering 96.7\% of songs.
+We fine-tune RoBERTa-base~\cite{liu2019roberta} for 5-class classification. The classifier is an evaluation instrument: high-confidence attribution to the target artist indicates successful style capture. We use a maximum sequence length of 512 tokens, covering ${\sim}$96.7\% of songs.
 
 \subsection{QLoRA Adapter Training}
+We use Gemma~4 E4B~\cite{gemma2025} (${\sim}$4B parameters, dense) loaded in 4-bit NF4 quantization with double quantization and bfloat16 compute via bitsandbytes~\cite{dettmers2022llmint8}. We chose the dense variant over the MoE one because adapter blending assumes dense layers---merging LoRA weights across routed experts is ambiguous.
 
-We use Gemma~4 E4B~\cite{gemma2025} (${\sim}$4B parameters, dense) loaded in 4-bit NF4 quantization with double quantization and bfloat16 compute via bitsandbytes~\cite{dettmers2022llmint8}. We chose the dense architecture over the 26B MoE variant because adapter blending assumes dense layers---merging LoRA weights across routed experts introduces ambiguity.
+LoRA adapters ($r{=}8$, $\alpha{=}16$, dropout 0.1) target all attention ($q,k,v,o$) and MLP (gate, up, down) projections in the language-model layers, selected via regex to exclude the vision/audio encoder layers---the QLoRA-recommended all-linear configuration. The training prompt \texttt{"Write song lyrics.\textbackslash n\textbackslash n\{lyrics\}"} is deliberately generic, with \emph{no artist name}, so style is forced into the adapter weights---a prerequisite for clean blending.
 
-LoRA adapters ($r{=}8$, $\alpha{=}16$, dropout 0.1) target all attention ($q$, $k$, $v$, $o$) and MLP (gate, up, down) projections in the language model layers, selected via regex to exclude vision/audio encoder layers.
-
-The training prompt \texttt{"Write song lyrics.\textbackslash n\textbackslash n\{lyrics\}"} is deliberately generic with no artist name, ensuring style is encoded in adapter weights---a prerequisite for clean blending.
+\subsection{Style-Weighted Loss}
+\label{sec:swloss}
+As an alternative objective we up-weight each artist's characteristic vocabulary. Per artist we compute TF-IDF scores over the training corpus, map them to per-token weights $w_t$ (capped at $10\times$, with the mean held near 1 so the overall loss scale is preserved), and minimize a token-weighted cross-entropy:
+\begin{equation}
+    \mathcal{L}_{\text{SW}} = -\frac{1}{\sum_t w_t}\sum_t w_t \, \log p_\theta(x_t \mid x_{<t}).
+\end{equation}
+Changing the loss changes the learned weights and hence the next-token distribution. Section~\ref{sec:why} shows that this single change deforms the distribution in two coupled ways, with two distinct symptoms.
 
 \subsection{Adapter Blending}
-
-At inference time, we linearly interpolate LoRA weights:
+At inference time we interpolate two LoRA adapters in delta space by rank concatenation, preserving the low-rank structure exactly:
 \begin{equation}
-    \Delta W_{\text{blend}} = \sum_{i=1}^{N} \alpha_i \, \Delta W_i, \quad \sum_{i=1}^{N} \alpha_i = 1
+    A_{\text{blend}}=\begin{bmatrix}\alpha A_{1}\\ (1-\alpha)A_{2}\end{bmatrix},\qquad
+    B_{\text{blend}}=\begin{bmatrix}B_{1}&B_{2}\end{bmatrix},
 \end{equation}
-producing an adapter whose style lies between the constituent artists.
+so that $\Delta W_{\text{blend}} = \alpha\,\Delta W_1 + (1-\alpha)\,\Delta W_2$. Endpoints $\alpha\in\{0,1\}$ recover the pure adapters exactly---a built-in sanity check (numerically verified to $\sim\!10^{-7}$).
 
 \subsection{Baselines}
-
+We compare against the base model with no fine-tuning, under three distinct prompt families (the adapters' generic prompt is a fourth):
 \begin{itemize}
-    \item \textbf{B1 -- Zero-shot:} Base model prompted with ``Write song lyrics in the style of \{artist\}.'' No fine-tuning; the artist name in the prompt is the only signal.
-    \item \textbf{B2 -- Few-shot:} Same prompt augmented with 3 randomly sampled training lyrics as in-context examples.
+    \item \textbf{B1 -- Zero-shot (base):} \texttt{"Write song lyrics in the style of \{artist\}."}
+    \item \textbf{B2 -- Few-shot (base):} the same opener, three sampled training lyrics as in-context examples, and a closing cue (\texttt{"Now write new song lyrics in the style of \{artist\}:"}).
+    \item \textbf{B3/B4 -- Instruct:} the instruction-tuned variant (\texttt{gemma-4-E4B-it}) prompted through its chat template, naming the band \emph{and} genre (to disambiguate names like ``Tool'') and requesting lyrics only.
 \end{itemize}
-
-Both baselines use identical generation parameters as the adapters (temperature 0.9, top-$p$ 0.9, repetition penalty 1.1, 200--512 tokens). We generate 10 samples per artist per method and report mean and standard deviation of classifier attribution. Crucially, baselines include the artist name in the prompt while adapters do not---adapters must encode style entirely in their weights.
+All methods use the same generation parameters (temperature 0.9, top-$p$ 0.9, repetition penalty 1.1, 200--512 tokens) and 10 samples per artist per method; we report mean attribution. Because the four baselines do not share a prompt, cross-baseline differences are partly prompt-driven; we treat the baselines as qualitative motivation rather than a controlled comparison. Crucially, every baseline names the artist while the adapters never do.
 
 % ============================================================
 \section{Experimental Setup}
 \label{sec:setup}
 
 \subsection{Dataset and Artist Selection}
-
-We use the \texttt{genius-lyrics-cleaned} dataset from Hugging Face (${\sim}$3.18M songs). We select five progressive/extreme metal artists: \textbf{Death} (116), \textbf{Gojira} (86), \textbf{Meshuggah} (116), \textbf{Opeth} (118), and \textbf{Tool} (74), totaling 510 songs after preprocessing.
-
-Same-genre selection ensures evaluation validity: a cross-genre classifier would distinguish genre rather than individual style. Our five artists share a genre but differ in voice: Gojira's environmental philosophy, Tool's cryptic wordplay, Death's technical lyricism, Meshuggah's mechanical abstraction, and Opeth's poetic melancholy.
-
-We apply stratified splitting: 459 training, 51 evaluation (90/10).
+We draw from the \texttt{genius-lyrics-cleaned} dataset on Hugging Face (${\sim}$3.18M songs) and select five progressive/extreme metal artists who share a genre but differ in voice, so the classifier must learn \emph{artist}, not genre:
+\begin{itemize}
+    \item \textbf{Mastodon} (154 songs) --- sludge/prog, concept-album narratives.
+    \item \textbf{Opeth} (118) --- poetic, melancholic.
+    \item \textbf{Death} (116) --- technical, philosophical lyricism.
+    \item \textbf{Gojira} (86) --- environmental, philosophical.
+    \item \textbf{Tool} (74) --- cryptic, conversational register.
+\end{itemize}
+After preprocessing, 548 songs remain; we apply a stratified 90/10 split (493 training, 55 evaluation).
 
 \subsection{Training Configuration}
+\textbf{Classifier.} RoBERTa-base, 10 epochs, lr $2{\times}10^{-5}$, batch 8, weight decay 0.01, warmup ratio 0.1, best checkpoint by validation accuracy (epoch~5).
 
-\textbf{Classifier:} RoBERTa-base, 5 epochs, lr $2{\times}10^{-5}$, batch 8, weight decay 0.01, warmup ratio 0.1, best checkpoint by validation accuracy.
+\textbf{QLoRA.} SFTTrainer (TRL), 3 epochs, effective batch 4, lr $2{\times}10^{-4}$, cosine schedule, warmup 0.1, weight decay 0.05, max length 512, gradient checkpointing, on an NVIDIA RTX 5090 (32\,GB).
 
-\textbf{QLoRA:} SFTTrainer (TRL), 3 epochs, batch 2 with gradient accumulation 2 (effective batch 4), lr $2{\times}10^{-4}$, cosine schedule, warmup ratio 0.1, weight decay 0.05, max length 512, gradient checkpointing. Trained on NVIDIA RTX 5090 (32\,GB).
-
-\textbf{Generation:} Nucleus sampling, temperature 0.9, top-$p$ 0.9, repetition penalty 1.1, 200--512 tokens.
+\textbf{Generation.} Nucleus sampling (temperature 0.9, top-$p$ 0.9, repetition penalty 1.1, 200--512 tokens); a fixed seed pairs sampling noise across adapter variants so differences are attributable to the weights.
 
 \subsection{Reproducibility}
-
-All code, data splits, and notebooks are available at \url{https://github.com/raccoon-42/lora-lyrics} with step-by-step reproduction instructions.
+All code, data splits, cached results, and notebooks are available at \url{https://github.com/raccoon-42/lora-lyrics} with step-by-step instructions.
 
 % ============================================================
 \section{Results}
@@ -120,165 +130,203 @@ All code, data splits, and notebooks are available at \url{https://github.com/ra
 
 \begin{figure}[t]
     \centering
-    \begin{minipage}[t]{0.48\textwidth}
-        \centering
+    \begin{minipage}[t]{0.48\textwidth}\centering
         \includegraphics[width=\textwidth]{figures/artist_distribution.pdf}
-        \caption{Songs per artist.}
-        \label{fig:distribution}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[t]{0.48\textwidth}
-        \centering
+        \caption{Songs per artist.}\label{fig:distribution}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.48\textwidth}\centering
         \includegraphics[width=\textwidth]{figures/lyric_lengths.pdf}
-        \caption{Lyric length distributions.}
-        \label{fig:lengths}
+        \caption{Lyric length distributions.}\label{fig:lengths}
     \end{minipage}
 \end{figure}
 
 \subsection{Data Analysis}
-
-Figure~\ref{fig:distribution} shows moderate class imbalance (Opeth has 1.6$\times$ Tool's songs). Token-level analysis reveals a median of 216 tokens per song (mean 238); only 17/510 (3.3\%) exceed 512 tokens (Figure~\ref{fig:lengths}).
+Figure~\ref{fig:distribution} shows moderate class imbalance (Mastodon has ${\sim}2\times$ Tool's songs). Lyric lengths (Figure~\ref{fig:lengths}) have a median near 216 tokens; only $3.3\%$ of songs exceed the 512-token limit.
 
 \subsection{Classifier Results}
-
 \begin{table}[t]
 \centering
-\caption{Per-class classifier performance on the evaluation set (51 songs). Overall accuracy: 92.2\%.}
+\caption{Per-class classifier performance on the evaluation set (55 songs). Accuracy 87.3\%, macro-F1 0.86, weighted-F1 0.87.}
 \label{tab:classifier}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Artist} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
 \midrule
 Death     & 1.00 & 1.00 & 1.00 \\
-Gojira    & 0.75 & 0.75 & 0.75 \\
-Meshuggah & 1.00 & 0.92 & 0.96 \\
-Opeth     & 0.92 & 1.00 & 0.96 \\
-Tool      & 0.86 & 0.86 & 0.86 \\
+Tool      & 0.88 & 1.00 & 0.93 \\
+Mastodon  & 0.75 & 1.00 & 0.86 \\
+Opeth     & 0.90 & 0.75 & 0.82 \\
+Gojira    & 1.00 & 0.56 & 0.71 \\
 \midrule
-\textbf{Weighted avg} & \textbf{0.92} & \textbf{0.92} & \textbf{0.92} \\
+\textbf{Macro avg} & 0.91 & 0.86 & \textbf{0.86} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:classifier} shows per-class results. Death is perfectly classified; Gojira is weakest (F1 = 0.75), confused with Opeth and Tool---consistent with their shared philosophical and environmental themes. A TF-IDF baseline achieves 82.4\% in 5-fold CV; the 10-point gain confirms RoBERTa captures deeper stylistic patterns.
+Table~\ref{tab:classifier} reports per-class results. Death is perfectly separated; Gojira is weakest (recall 0.56), its misses absorbed mostly by Mastodon---the largest class acts as an in-domain ``absorber.'' A TF-IDF + logistic-regression baseline reaches 81.8\% in 5-fold CV; RoBERTa's gain confirms it captures deeper patterns than surface lexicon. Validation loss plateaus while training loss keeps falling (Figure~\ref{fig:curves}), indicating mild overfitting. Extending to 10 epochs improved accuracy over a 5-epoch run, but the best checkpoint occurred at epoch~5; since the warmup/decay schedule scales with total steps, the gain is attributable to the \emph{schedule} (a lower effective learning rate at epoch~5 of~10), not to additional epochs.
 
 \begin{figure}[t]
     \centering
-    \begin{minipage}[t]{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/confusion_matrix.pdf}
-        \caption{Classifier confusion matrix.}
-        \label{fig:confusion}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[t]{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/training_curves.pdf}
-        \caption{Loss and accuracy curves.}
-        \label{fig:curves}
-    \end{minipage}
+    \includegraphics[width=0.55\textwidth]{figures/confusion_matrix.pdf}
+    \caption{Classifier confusion matrix (evaluation set, 55 songs).}\label{fig:confusion}
 \end{figure}
 
-Figure~\ref{fig:confusion} shows that Gojira's errors split between Opeth and Tool (1 each); Meshuggah and Tool each lose one sample to Gojira. Figure~\ref{fig:curves} shows validation loss plateauing after epoch~3 with continued training loss decrease, indicating mild overfitting.
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/training_curves.pdf}
+    \caption{Classifier training over 10 epochs. Train loss falls to near zero while validation loss plateaus and rises (mild overfitting); validation accuracy peaks at epoch~5 (0.873, the adopted checkpoint).}\label{fig:curves}
+\end{figure}
 
-\subsection{Baseline Results}
+\subsection{Adapters vs.\ Baselines, and the Attribution Sink}
+\label{sec:sink}
+Figure~\ref{fig:comparison} gives the main result: adapters attribute to the correct artist for all five even though the prompt names none of them---style lives in the weights (representative pure-adapter samples in Appendix~\ref{app:samples}, part~A). The baselines fail everywhere except Tool, and that exception is an artifact.
 
-\begin{table}[t]
-\centering
-\caption{Target-artist attribution (mean $\pm$ std, $n{=}10$) for baselines and adapters. Higher is better.}
-\label{tab:results}
-\begin{tabular}{llcc}
-\toprule
-\textbf{Method} & \textbf{Type} & \textbf{Gojira} & \textbf{Tool} \\
-\midrule
-Zero-shot     & Baseline  & $0.011 \pm 0.008$ & $0.971 \pm 0.034$ \\
-Few-shot (3)  & Baseline  & $0.083 \pm 0.235$ & $0.947 \pm 0.044$ \\
-\midrule
-LoRA $r{=}8$  & Adapter   & $\mathbf{0.983 \pm 0.010}$ & $\mathbf{0.863 \pm 0.173}$ \\
-DoRA $r{=}8$  & Adapter   & $0.989 \pm 0.002$ & $0.772 \pm 0.343$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+The non-instruction-tuned base model, asked to ``write lyrics,'' instead continues its pretraining prior for lyrics \emph{web pages} (HTML and forum boilerplate); the classifier has no reject option, so this out-of-distribution text is forced onto the nearest real artist. Every base-model baseline collapses onto \textbf{Tool} ($P(\text{Tool}){=}0.993$ regardless of target), because Tool's distinctiveness among these five is plain conversational English, which generic web text resembles.
 
-Table~\ref{tab:results} and Figure~\ref{fig:comparison} present the main results. For Gojira, both baselines fail entirely: zero-shot achieves only 1.1\% attribution, and few-shot reaches 8.3\% with very high variance ($\sigma{=}0.235$). The LoRA adapter achieves 98.3\% with tight variance, a qualitative leap. For Tool, baselines score high (94.7--97.1\%) because the base model's default output style is classified as Tool by the classifier. The LoRA adapter scores 86.3\%, seemingly lower, but this reflects genuine stylistic specificity rather than a default bias.
+The instruction-tuned model instead produces fluent but mode-collapsed lyrics (near-identical, ornate openings across artists) that collapse onto \textbf{Opeth}---whose poetic, melancholic register is the nearest match to a generic ``polished poem.'' The sink thus follows the \emph{register} of the out-of-distribution input: plain web text routes to Tool, polished verse to Opeth. Two different sinks, \emph{neither} the majority class (Mastodon): the cause is the missing reject option, not class imbalance.
+
+We therefore treat attribution as a sanity check valid only on genuine lyric-like input; adapter output, being lyric-like, is validly scored.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.85\textwidth]{figures/method_comparison.pdf}
-    \caption{Target-artist attribution across all methods. Error bars show $\pm 1\sigma$ over 10 samples.}
+    \includegraphics[width=\textwidth]{figures/method_comparison.pdf}
+    \caption{Target-artist attribution (mean $\pm 1\sigma$, $n{=}10$). \emph{Left:} baselines---the base model collapses onto Tool, the instruct model onto Opeth (each scores high only for its sink target). \emph{Right:} adapter ablations, with the $y$-axis zoomed to expose the LoRA/DoRA/SW differences.}
     \label{fig:comparison}
 \end{figure}
 
-\subsection{Ablation Studies}
+\subsection{Ablations: Method and Rank}
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.72\textwidth]{figures/rank_ablation.pdf}
+    \caption{LoRA rank ablation (target-artist attribution, mean $\pm 1\sigma$, $n{=}10$; $y$-axis zoomed). $r{=}4$ matches or beats $r{=}8$ on all three artists, while $r{=}16$ overfits.}
+    \label{fig:rank}
+\end{figure}
+
+\textbf{LoRA vs.\ DoRA} (Figure~\ref{fig:comparison}, right panel) is mixed: DoRA wins Gojira and Opeth, LoRA wins Tool, Death, and Mastodon, with no perplexity difference (Section~\ref{sec:ppl}). Neither dominates at this scale.
+
+\textbf{Rank} (Figure~\ref{fig:rank}, three artists) contradicts the intuitive ``$r{=}8$ is best'': $r{=}16$ consistently overfits---lower attribution \emph{and} inflated off-target perplexity---while $r{=}4$ matches or beats $r{=}8$ on attribution. Yet on perplexity $r{=}8$ can win (Tool own-column 4.3 at $r{=}8$ vs.\ 8.0 at $r{=}4$): the best rank depends on the objective, an early instance of the metric disagreement that recurs throughout.
+
+\subsection{Style-Weighted Loss: Metrics Disagree}
+\label{sec:swresults}
+We score the SW adapters on four axes. For lexical analysis we define a \emph{marker} as one of an artist's top-40 distinctive tokens (TF-IDF, stopwords dropped); \emph{types}/sample counts distinct markers (breadth), \emph{occurrences}/sample counts total markers (repetition), and \emph{distinct-2} is the fraction of unique bigrams (lower = more looping). Table~\ref{tab:sw} contrasts plain and SW adapters.
 
 \begin{table}[t]
 \centering
-\caption{Ablation results (target-artist attribution, mean $\pm$ std, $n{=}10$).}
-\label{tab:ablation}
-\begin{tabular}{lcc}
+\caption{Plain vs.\ style-weighted (SW) adapters, per artist. Attribution = target $P$; types and occurrences = markers per sample; distinct-2 lower means more looping. Bold marks the largest moves (Gojira breadth, Tool repetition).}
+\label{tab:sw}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{l cc cc cc cc}
 \toprule
-\textbf{Configuration} & \textbf{Gojira} & \textbf{Tool} \\
+& \multicolumn{2}{c}{\textbf{Attribution}} & \multicolumn{2}{c}{\textbf{Types}} & \multicolumn{2}{c}{\textbf{Occurrences}} & \multicolumn{2}{c}{\textbf{Distinct-2}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+Artist & plain & SW & plain & SW & plain & SW & plain & SW \\
 \midrule
-\multicolumn{3}{l}{\textit{LoRA vs.\ DoRA ($r{=}8$)}} \\
-LoRA  & $0.983 \pm 0.010$ & $\mathbf{0.863 \pm 0.173}$ \\
-DoRA  & $\mathbf{0.989 \pm 0.002}$ & $0.772 \pm 0.343$ \\
-\midrule
-\multicolumn{3}{l}{\textit{Rank ablation (Gojira, LoRA)}} \\
-$r{=}4$  & $0.881 \pm 0.275$ & -- \\
-$r{=}8$  & $\mathbf{0.983 \pm 0.010}$ & -- \\
-$r{=}16$ & $0.956 \pm 0.105$ & -- \\
+Gojira   & .99 & .67 & 1.6 & \textbf{5.7} & 1.9 & 11.9 & .96 & .71 \\
+Tool     & .69 & .90 & 2.5 & 3.3 & 3.1 & \textbf{28.5} & .88 & .74 \\
+Death    & .90 & .92 & 1.7 & 1.5 & 2.9 & 7.2 & .67 & .63 \\
+Mastodon & .87 & .87 & 2.0 & 3.3 & 2.7 & 4.9 & .90 & .70 \\
+Opeth    & .90 & .85 & 0.7 & 2.8 & 0.7 & 7.1 & .92 & .71 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{LoRA vs.\ DoRA.}
-On Gojira, DoRA marginally outperforms LoRA (98.9\% vs.\ 98.3\%) with lower variance. On Tool, LoRA is more stable (86.3\% vs.\ 77.2\%, $\sigma$ 0.17 vs.\ 0.34). The mixed results suggest neither method is uniformly superior at this scale.
+The axes disagree sharply. Gojira's SW adapter gains genuine breadth ($3.6\times$ more distinct markers) yet \emph{loses} attribution ($.99\!\rightarrow\!.67$): the classifier penalizes the enrichment.
 
-\textbf{Rank ablation.}
-Table~\ref{tab:ablation} and Figure~\ref{fig:ablation} show the effect of LoRA rank on Gojira. Rank $r{=}8$ is the sweet spot (98.3\%), with $r{=}4$ dropping to 88.1\% due to insufficient capacity and $r{=}16$ slightly degrading to 95.6\% with higher variance, possibly from overfitting on the small training set (86 songs).
+Tool is the opposite---attribution \emph{rises} ($.69\!\rightarrow\!.90$) while breadth stays flat ($2.5\!\rightarrow\!3.3$) and occurrences explode ($3.1\!\rightarrow\!28.5$, $\sim\!8.6$ per type). Tool's gain is therefore pure repetition, not richer vocabulary, and is caught only because the repetition-robust \emph{types} metric did not move---a degenerate Tool ``hey'' loop scores 0.996 while a coherent verse from the plain adapter scores 0.003 (Appendix~\ref{app:samples}, part~C).
+
+Distinct-2 falls for all five (degeneration is universal under SW), so it cannot tell the two cases apart. No single metric reveals that Gojira's SW bought real breadth while Tool's bought none---and that attribution rewarded the wrong one.
+
+\subsection{Perplexity}
+\label{sec:ppl}
+Perplexity is measured by teacher-forcing each adapter on every artist's held-out lyrics (the generic prompt masked): the model scores real text it never produced, so it is hard to game by repetition. Table~\ref{tab:ppl} shows own-artist perplexity (column minima, in bold).
+
+\begin{table}[t]
+\centering\small
+\caption{Cross-artist perplexity (lower better). Each block's column minimum is bold (specialization). Base row for reference.}
+\label{tab:ppl}
+\begin{tabular}{lrrrrr}
+\toprule
+adapter ($r{=}8$) & Gojira & Tool & Death & Mastodon & Opeth \\
+\midrule
+base            & 45.9 & 18.6 & 30.4 & 32.3 & 57.7 \\
+\midrule
+\multicolumn{6}{l}{\itshape plain LoRA}\\
+Gojira   & \textbf{18.2} & 10.9 & 15.3 & 18.7 & 34.0 \\
+Tool     & 28.2 & \textbf{4.3} & 16.1 & 19.1 & 37.0 \\
+Death    & 70.3 & 24.6 & \textbf{4.5} & 49.5 & 105.6 \\
+Mastodon & 40.4 & 14.6 & 23.0 & \textbf{8.1} & 54.4 \\
+Opeth    & 29.0 & 12.2 & 16.5 & 20.7 & \textbf{9.5} \\
+\midrule
+\multicolumn{6}{l}{\itshape style-weighted}\\
+Gojira   & \textbf{22.2} & 11.9 & 17.2 & 20.2 & 39.5 \\
+Tool     & 28.1 & \textbf{5.2} & 15.8 & 18.7 & 36.6 \\
+Death    & 49.8 & 19.1 & \textbf{6.6} & 36.8 & 71.3 \\
+Mastodon & 35.5 & 13.5 & 20.7 & \textbf{11.6} & 47.1 \\
+Opeth    & 35.1 & 13.4 & 19.3 & 22.7 & \textbf{16.9} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every adapter beats the base model in every column and minimizes its own column, so the adapters specialize on the likelihood axis too. But SW \emph{raises} every diagonal entry (e.g.\ Gojira $18.2\!\rightarrow\!22.2$, Opeth $9.5\!\rightarrow\!16.9$): emphasizing rare markers costs likelihood on held-out real lyrics. Perplexity rewards exactly what SW penalizes---another axis pointing the opposite way to Tool's attribution gain.
+
+\subsection{Adapter Blending}
+\label{sec:blend}
+Sweeping $\alpha$ (the weight on the Gojira adapter) and measuring attribution gives the crossover point where Gojira overtakes its partner. For the plain Gojira--Tool pair the crossover is $\alpha\!=\!0.17$: a 50/50 weight blend already reads overwhelmingly Gojira. For the SW pairs it moves to $0.47$--$0.66$ (Tool 0.61, Death 0.66, Opeth 0.59, Mastodon 0.47), so the \emph{partner} usually wins a 50/50 mix (Figure~\ref{fig:blend}). The skew tracks endpoint strength: SW weakens the Gojira endpoint and strengthens the partners, reversing the plain result. Qualitatively, intermediate blends often read as a \emph{third} artist---e.g.\ a Gojira--Death blend's ``dragon/doom'' fantasy is attributed to Mastodon (0.79), whose concept albums share that imagery---a direct echo of the gameable-attribution finding. Appendix~\ref{app:samples} (parts~B and~C) contrasts a blend where the Gojira anchor holds with two that collapse---onto the partner and onto a third artist.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.85\textwidth]{figures/ablation.pdf}
-    \caption{Left: LoRA vs.\ DoRA comparison ($r{=}8$). Right: Rank ablation for Gojira (LoRA).}
-    \label{fig:ablation}
+    \includegraphics[width=0.92\textwidth,height=0.42\textheight,keepaspectratio]{figures/blend_sw_gojira_partners.pdf}
+    \caption{Attribution (y) vs.\ blend weight $\alpha$ on Gojira (x) for the four Gojira-SW blends. Crossovers fall at $0.47$--$0.66$, not $0.5$.}
+    \label{fig:blend}
 \end{figure}
 
-% ============================================================
-\section{Error Analysis}
-\label{sec:error}
+\subsection{Classifier-Free Embedding Analysis}
+\label{sec:embed}
+As an instrument that was never fit to the artist labels, we embed every real song with a sentence encoder~\cite{reimers2019sentencebert}, form per-artist centroids, and score generated samples by cosine similarity (Figure~\ref{fig:embed}). Three findings corroborate the classifier results while remaining independent of its decision boundary. (1)~All ten adapter rows are attributed correctly, while every base-model baseline points at Tool and sits far from all clusters (max similarity $0.33$--$0.41$ vs.\ $0.56$--$0.74$ for adapters)---the OOD sink, now classifier-free. (2)~Tool's SW attribution \emph{jump} is \emph{not} reproduced: embedding similarity to the Tool centroid \emph{drops} ($0.603\!\rightarrow\!0.558$) exactly where the classifier rose, the strongest external evidence that the gain was a repetition artifact. (3)~SW drifts semantically off-centroid for all five artists (paralleling the perplexity rise), confirming the cost is real and not classifier-specific.
 
-\textbf{Classifier errors.}
-Gojira's low F1 (0.75) reflects genuine thematic overlap with Opeth (nature, existential reflection) and Tool (philosophical abstraction). The 92.2\% accuracy means ${\sim}$1 in 13 real songs is misclassified, a limitation that propagates into evaluation of generated lyrics.
-
-\textbf{Tool baseline inflation.}
-The base model's default generation style is consistently classified as Tool (94.9--97.1\%), even when prompted for Gojira. This inflates Tool's baseline scores and makes adapter improvements for Tool harder to demonstrate via attribution alone. The adapters produce more stylistically specific text, but occasional samples that deviate from Tool's narrow patterns get misclassified.
-
-\textbf{Generation quality.}
-Gojira adapter output captures environmental and philosophical themes (``roots of life'', ``giants living deep inside of us''). Tool output exhibits sardonic, confrontational tone. However, Tool's hallmarks---complex meter shifts, esoteric/Jungian references---are absent, suggesting finer signatures require more data. The $r{=}4$ and $r{=}16$ ablations show high variance (0.275 and 0.105), with some samples failing to capture the target style---consistent with the small training set (86 songs).
+\begin{figure}[t]
+    \centering
+    \includegraphics[height=0.40\textheight]{figures/embedding_map_per_artist_tsne.pdf}
+    \caption{t-SNE of real songs (clusters), adapter samples (on-cluster), and baselines (OOD islands), shared projection.}
+    \label{fig:embed}
+\end{figure}
 
 % ============================================================
 \section{Discussion}
 \label{sec:discussion}
 
-\textbf{Evaluation methodology.}
-Standard reference-based metrics (BLEU, ROUGE) are inapplicable to open-ended creative generation without ground-truth references. Classifier attribution directly measures style capture, but risks circularity: the classifier may learn superficial patterns that adapters also exploit. The Tool baseline inflation (97.1\% without fine-tuning) illustrates this. Perplexity and human evaluation are planned as complementary metrics.
+\subsection{Why One Loss Change Causes Two Failures}
+\label{sec:why}
+The style-weighted loss is a single intervention---up-weight rare markers---yet it produces two seemingly unrelated symptoms: higher perplexity (Section~\ref{sec:ppl}) and more looping (lower distinct-2, Section~\ref{sec:swresults}). Both follow from one deformation of the learned next-token distribution, viewed two ways.
 
-\textbf{Data scale.}
-With 74--86 training songs per artist, the rank ablation suggests $r{=}8$ is near-optimal, with higher ranks overfitting. No verbatim copying was observed.
+\emph{Shift:} because the softmax sums to one, giving rare markers more probability steals it from common tokens; held-out real lyrics are mostly common tokens, so the model predicts the bulk worse and perplexity rises.
 
-\textbf{Remaining work.}
-Adapter blending across artist pairs at $\alpha \in \{0.0, 0.25, 0.5, 0.75, 1.0\}$; perplexity evaluation; extension to remaining artists.
+\emph{Sharpen:} the up-weighted set is small and rare, so mass concentrates onto a few tokens, lowering per-step entropy; a low-entropy step has almost no probability on an ``escape'' token, so the model's copy bias~\cite{holtzman2020degeneration} wins and the text loops (``hey hey hey,'' ``Dragons of doom'' repeated). Looping was never requested---we weighted \emph{which} tokens matter, not whether to repeat---it emerges from the entropy collapse.
 
-\textbf{Ethical considerations.}
-Training on copyrighted lyrics is limited to academic research. The adapters could impersonate an artist's voice, raising authenticity and IP concerns. Metal lyrics may contain violent imagery that a fine-tuned model could amplify. Generated text may also hallucinate content falsely attributable to an artist.
+This marker-vs-common trade-off is a Pareto frontier set by the weight cap; higher decoding temperature, which raises effective entropy, is the natural mitigation.
+
+\subsection{Evaluation Methodology}
+Reference-based metrics (BLEU, ROUGE) are inapplicable to open-ended generation without ground truth. Our instruments instead measure different facets, and they disagree by construction.
+
+Classifier attribution rewards surface-marker \emph{density} and is gameable (Tool SW: a degenerate ``hey'' loop scores higher than a coherent verse) and biased (the forced 1-of-5 sink). Token-level TF-IDF favors concrete-noun artists (Gojira: \emph{tree/star/forest}) over conversational ones (Tool), and splits long rare words (Death) into subword fragments---an instrument asymmetry shared by the sentence encoder, which captures topic more than register. Perplexity is hard to game but measures fit, not perceived style.
+
+The practical conclusion is not that one metric is correct but that style is multi-dimensional: breadth, fidelity, degeneration, and attribution must be read together. The most trustworthy measure remains human judgment, which a single author cannot supply at scale---a limitation we state plainly.
+
+\subsection{Ethical Considerations}
+Training on copyrighted lyrics is confined to academic research. The adapters can impersonate an artist's voice, raising authenticity and IP concerns, and---because they faithfully reproduce the source---can amplify the violent or offensive content present in some metal lyrics; this faithfulness to the ``bad'' as well as the ``good'' is itself a deployment risk. In particular, the corpus contains profanity and graphic gore lexicon, which the adapters reproduce verbatim and the style-weighted variant actively amplifies (its loops of explicit language are among its highest-attribution outputs); several generated samples are explicit, and we excluded profane ones from the printed appendix. A deployed system would therefore require content filtering. Generated text may also hallucinate content falsely attributable to an artist. No verbatim copying of training songs was observed in generated samples.
 
 % ============================================================
 \section{Conclusion}
 \label{sec:conclusion}
+We built a pipeline for artist-conditional lyric generation with per-artist QLoRA adapters on Gemma~4 E4B and delta-space blending. Adapters capture five same-genre metal styles with no artist name in the prompt, far exceeding zero-shot and few-shot baselines, which collapse onto out-of-distribution sink artists. Across attribution, lexical breadth, degeneration, perplexity, embedding distance, and blending, the instruments disagree: a style-weighted loss raises attribution while lowering quality, and 50/50 weight blends are not 50/50 in style. We trace the style-weighted failures to a single distribution deformation with two symptoms. The central lesson is methodological---style is not one number---and the natural next step is structured human evaluation to anchor the automated axes.
 
-We presented a pipeline for artist-conditional lyric generation using per-artist QLoRA adapters on Gemma~4 E4B. A RoBERTa classifier (92.2\% accuracy) confirms that five same-genre metal artists are distinguishable. LoRA adapters massively outperform zero-shot and few-shot baselines for Gojira (98.3\% vs.\ 1.1\% and 8.3\% attribution), demonstrating that prompting alone cannot steer artist-specific style. Ablation studies show $r{=}8$ as optimal rank and mixed results for LoRA vs.\ DoRA. The Tool results highlight a limitation of single-metric evaluation: baseline inflation from the classifier's default bias. Future work includes adapter blending experiments, perplexity evaluation, and extension to the remaining three artists.
-
+% ============================================================
+\appendix
+\clearpage
+\input{appendix_samples}
+% ============================================================
+\hypersetup{linkcolor=red}  % back-reference page numbers in red (scoped to the bibliography)
 \bibliographystyle{splncs04}
 \bibliography{references}
 
