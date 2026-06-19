@@ -1,0 +1,9 @@
+CENG 467 — Natural Language Understanding and Generation — Term Project
+Artist-Conditional Lyric Generation with QLoRA Adapter Blending
+Ali Ozkaya — Izmir Institute of Technology, Spring 2026
+
+Overleaf report (read-only access):
+https://www.overleaf.com/read/sfkjmpsgnxhs#ecadbb
+
+The compiled report is also included in this archive as report/final_report.pdf,
+and its LaTeX source is under report/ (final_report.tex + appendix_samples.tex).

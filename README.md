@@ -3,15 +3,21 @@
 CENG 467 Natural Language Understanding and Generation -- Term Project  
 Izmir Institute of Technology, Spring 2026
 
+**Report (Overleaf, view-only):** https://www.overleaf.com/read/sfkjmpsgnxhs#ecadbb  
+The compiled report is also included as `report/final_report.pdf`.
+
 ## Overview
 
-Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation, with inference-time adapter blending for style interpolation. A RoBERTa-based artist-attribution classifier (~84% accuracy over five artists) serves as the evaluation instrument.
+Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation, with inference-time adapter blending for style interpolation. Evaluation uses four independent instruments — a RoBERTa-based artist-attribution classifier (87.3% accuracy, macro-F1 0.86 over five artists), a cross-artist perplexity matrix, distinctive-token lexical metrics, and a classifier-free sentence-embedding analysis — and the central finding is that they disagree.
 
 ## Repository Structure
 
 ```
 ├── report/                      # LNCS report (LaTeX source + figures)
-│   ├── main.tex
+│   ├── final_report.tex          # Final report
+│   ├── appendix_samples.tex      # Generated lyric samples (appendix)
+│   ├── progress_report.tex       # Mid-term progress report
+│   ├── presentation.tex          # Beamer slide deck
 │   ├── references.bib
 │   └── figures/
 ├── src/
@@ -25,10 +31,18 @@ Per-artist QLoRA adapters on Gemma 4 E4B for style-conditional lyric generation,
 │   ├── 08_perplexity.ipynb       # Cross-artist perplexity matrix (GPU)
 │   ├── 09_sw_compare.ipynb       # Display-only: plain vs style-weighted adapter
 │   ├── evaluate.py               # Single GPU entry point: caches all eval results
+│   ├── embedding_eval.py         # Classifier-free embedding attribution + 2D maps (CPU)
+│   ├── experiment_clf_epochs.py  # Classifier epoch sweep (adopted epoch-5 of 10)
+│   ├── gen_appendix.py           # Generate appendix_samples.tex from cached results
 │   ├── config.py                 # Shared paths, constants, Adapter registry
 │   ├── generation/               # Base model, data, adapter training, generation
 │   ├── classifier/               # RoBERTa model, data, training, classify
 │   ├── evaluation/               # Attribution metrics, perplexity, blending
+│   ├── figures/                  # Figure/plot generation scripts (run as `python -m figures.<name>`)
+│   │   ├── regen_report_figures.py  # Training-curve, method-comparison + rank-ablation figures (CPU)
+│   │   ├── regen_clf_figures.py     # Confusion matrix + report from the adopted classifier
+│   │   └── clf_report.py            # Per-class report + confusion PNGs for any classifier dir
+│   ├── judge/                    # Exportable LLM-as-judge eval (rubric, runner, agreement)
 │   ├── artifacts/                # Trained weights (adapters/ + classifier/)
 │   ├── results/                  # Cached eval results (JSON, tracked in git)
 │   ├── pyproject.toml            # Python dependencies

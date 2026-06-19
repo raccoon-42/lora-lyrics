@@ -1,6 +1,6 @@
 """Per-class report + confusion matrix PNGs for a trained classifier.
 
-Run from src/:  uv run python clf_report.py artifacts/classifier_e10
+Run from src/:  uv run python -m figures.clf_report artifacts/classifier_e10
 
 The argument is a classifier folder; the model inside is resolved in order:
 a model dir itself (config.json), a best_model/ child (production layout),

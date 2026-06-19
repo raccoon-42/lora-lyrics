@@ -1,6 +1,6 @@
 """Regenerate the deck/report classifier figures from the ADOPTED classifier.
 
-Run from src/ on the GPU box:  uv run python regen_clf_figures.py
+Run from src/ on the GPU box:  uv run python -m figures.regen_clf_figures
 
 Loads the adopted checkpoint (config.CLF_PATH = e10-ep5, acc ~0.873), runs
 inference on the held-out eval set, and writes two artifacts into report/figures/:

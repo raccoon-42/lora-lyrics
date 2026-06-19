@@ -2,7 +2,7 @@
   - training_curves.pdf : from the 10-epoch run's saved trainer_state.json
   - method_comparison.pdf: 2-row (2x3) per-artist panels, readable fonts,
                            replacing the unreadable 1x5 wide strip.
-Run: uv run python regen_report_figures.py
+Run from src/: uv run python -m figures.regen_report_figures
 """
 import json
 from pathlib import Path
@@ -11,7 +11,7 @@ from statistics import mean, pstdev
 import numpy as np
 import matplotlib.pyplot as plt
 
-HERE = Path(__file__).parent
+HERE = Path(__file__).resolve().parent.parent  # src/ (this file lives in src/figures/)
 FIG = HERE.parent / "report" / "figures"
 RES = HERE / "results"
 ARTISTS = ["Gojira", "Tool", "Death", "Mastodon", "Opeth"]
